@@ -5,3 +5,10 @@ Hydra is a performance-first ML systems toolkit built under the Continuum infras
 The first module, Hydra Doctor, provides deterministic diagnostics for GPU, CUDA, and PyTorch environments before training begins.
 
 Hydra is designed to reduce silent training failures, version mismatches, and hidden performance regressions in GPU-based workloads.
+
+## Design Principles
+
+- Deterministic diagnostics
+- No silent system modifications
+- Reproducible structured reports
+- Infrastructure-grade transparency
