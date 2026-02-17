@@ -1,12 +1,12 @@
 [project]
 name = "continuum-intelligence"
 version = "0.1.0"
-description = "Continuum Hydra: performance-first ML systems toolkit (Hydra Doctor v1 in progress)"
+description = "Continuum Hydra: performance-first ML systems toolkit with doctor diagnostics and profiling"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Continuum Intelligence" }]
-keywords = ["ml", "pytorch", "cuda", "gpu", "performance", "infra", "diagnostics"]
+keywords = ["ml", "pytorch", "cuda", "gpu", "performance", "infra", "diagnostics", "profiling", "benchmark"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -17,6 +17,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Systems Administration",
   "Topic :: Software Development :: Testing",

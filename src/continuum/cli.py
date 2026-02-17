@@ -3,6 +3,7 @@ from __future__ import annotations
 import typer
 
 from continuum.doctor.main import doctor_command
+from continuum.profiler.main import profile_command
 
 app = typer.Typer(
     help="Continuum CLI — Performance-first ML infrastructure toolkit.",
@@ -16,5 +17,6 @@ def main() -> None:
 
 
 app.command(name="doctor")(doctor_command)
+app.command(name="profile")(profile_command)
 
 __all__ = ["app"]
