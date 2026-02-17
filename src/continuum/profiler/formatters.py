@@ -13,11 +13,16 @@ except Exception:  # pragma: no cover
     Table = None  # type: ignore[assignment]
 
 
-def build_profile_report(static_profile: dict[str, Any], benchmark_results: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def build_profile_report(
+    static_profile: dict[str, Any],
+    benchmark_results: list[dict[str, Any]] | None = None,
+    benchmarks: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "schema_version": "1.0.0",
         "static_profile": static_profile,
         "benchmark_results": list(benchmark_results or []),
+        "benchmarks": dict(benchmarks or {}),
     }
 
 
@@ -36,14 +41,16 @@ def render_profile_human(report: dict[str, Any], console: Console | None = None)
 
     active_console = console or Console()
     rows = _build_status_rows(report)
-    table = Table(title="Continuum Profile Report")
-    table.add_column("Status", no_wrap=True)
-    table.add_column("Item", overflow="fold")
-    table.add_column("Result", overflow="fold")
-    table.add_column("Benchmark", overflow="fold")
-    for row in rows:
-        table.add_row(_style_status(row["status"]), row["item"], row["result"], row["benchmark"])
-    active_console.print(table)
+    if rows:
+        table = Table(title="Continuum Profile Report")
+        table.add_column("Status", no_wrap=True)
+        table.add_column("Item", overflow="fold")
+        table.add_column("Result", overflow="fold")
+        table.add_column("Benchmark", overflow="fold")
+        for row in rows:
+            table.add_row(_style_status(row["status"]), row["item"], row["result"], row["benchmark"])
+        active_console.print(table)
+    _render_cpu_sustained_rich(report, active_console)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -55,10 +62,12 @@ def render_profile_human(report: dict[str, Any], console: Console | None = None)
 
 def _render_profile_compact(report: dict[str, Any]) -> None:
     rows = _build_status_rows(report)
-    print("Continuum Profile Report")
-    print("STATUS ITEM RESULT BENCHMARK")
-    for row in rows:
-        print(f"[{row['status']}] {row['item']} | {row['result']} | {row['benchmark']}")
+    if rows:
+        print("Continuum Profile Report")
+        print("STATUS ITEM RESULT BENCHMARK")
+        for row in rows:
+            print(f"[{row['status']}] {row['item']} | {row['result']} | {row['benchmark']}")
+    _render_cpu_sustained_compact(report)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -89,43 +98,44 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
         value = static.get(key) if isinstance(static, dict) else None
         return value if isinstance(value, dict) else {}
 
-    cpu = _section("cpu")
-    memory = _section("memory")
-    storage = _section("storage")
-    os_info = _section("os")
-    runtime = _section("runtime")
-
     rows: list[dict[str, str]] = []
-    fields = [
-        ("cpu.model", cpu.get("model")),
-        ("cpu.cores_physical", cpu.get("cores_physical")),
-        ("cpu.cores_logical", cpu.get("cores_logical")),
-        ("cpu.arch", cpu.get("arch")),
-        ("memory.total_bytes", memory.get("total_bytes")),
-        ("storage.root_mount", storage.get("root_mount")),
-        ("storage.root_device", storage.get("root_device")),
-        ("storage.filesystem_type", storage.get("filesystem_type")),
-        ("storage.is_nvme", storage.get("is_nvme")),
-        ("storage.is_ssd", storage.get("is_ssd")),
-        ("os.name", os_info.get("name")),
-        ("os.version", os_info.get("version")),
-        ("os.kernel", os_info.get("kernel")),
-        ("runtime.python_version", runtime.get("python_version")),
-        ("runtime.torch_version", runtime.get("torch_version")),
-        ("runtime.torch_cuda_available", runtime.get("torch_cuda_available")),
-        ("runtime.torch_cuda_version", runtime.get("torch_cuda_version")),
-        ("runtime.platform", runtime.get("platform")),
-    ]
+    if isinstance(static, dict) and static:
+        cpu = _section("cpu")
+        memory = _section("memory")
+        storage = _section("storage")
+        os_info = _section("os")
+        runtime = _section("runtime")
 
-    for item, value in fields:
-        rows.append(
-            {
-                "status": _status_for_value(value),
-                "item": item,
-                "result": "null" if value is None else str(value),
-                "benchmark": "-",
-            }
-        )
+        fields = [
+            ("cpu.model", cpu.get("model")),
+            ("cpu.cores_physical", cpu.get("cores_physical")),
+            ("cpu.cores_logical", cpu.get("cores_logical")),
+            ("cpu.arch", cpu.get("arch")),
+            ("memory.total_bytes", memory.get("total_bytes")),
+            ("storage.root_mount", storage.get("root_mount")),
+            ("storage.root_device", storage.get("root_device")),
+            ("storage.filesystem_type", storage.get("filesystem_type")),
+            ("storage.is_nvme", storage.get("is_nvme")),
+            ("storage.is_ssd", storage.get("is_ssd")),
+            ("os.name", os_info.get("name")),
+            ("os.version", os_info.get("version")),
+            ("os.kernel", os_info.get("kernel")),
+            ("runtime.python_version", runtime.get("python_version")),
+            ("runtime.torch_version", runtime.get("torch_version")),
+            ("runtime.torch_cuda_available", runtime.get("torch_cuda_available")),
+            ("runtime.torch_cuda_version", runtime.get("torch_cuda_version")),
+            ("runtime.platform", runtime.get("platform")),
+        ]
+
+        for item, value in fields:
+            rows.append(
+                {
+                    "status": _status_for_value(value),
+                    "item": item,
+                    "result": "null" if value is None else str(value),
+                    "benchmark": "-",
+                }
+            )
 
     benchmark_results = report.get("benchmark_results") if isinstance(report, dict) else None
     if isinstance(benchmark_results, list):
@@ -150,7 +160,54 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
                 }
             )
 
+    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
+    cpu_sustained = benchmarks.get("cpu_sustained") if isinstance(benchmarks, dict) else None
+    if isinstance(cpu_sustained, dict):
+        cpu_fields = [
+            ("benchmarks.cpu_sustained.mean_iter_per_sec", cpu_sustained.get("mean_iter_per_sec")),
+            ("benchmarks.cpu_sustained.p95_iter_per_sec", cpu_sustained.get("p95_iter_per_sec")),
+            ("benchmarks.cpu_sustained.std_iter_per_sec", cpu_sustained.get("std_iter_per_sec")),
+            ("benchmarks.cpu_sustained.iterations", cpu_sustained.get("iterations")),
+            ("benchmarks.cpu_sustained.duration_sec", cpu_sustained.get("duration_sec")),
+        ]
+        for item, value in cpu_fields:
+            rows.append(
+                {
+                    "status": _status_for_value(value),
+                    "item": item,
+                    "result": "null" if value is None else str(value),
+                    "benchmark": "cpu_sustained",
+                }
+            )
+
     return rows
+
+
+def _render_cpu_sustained_rich(report: dict[str, Any], console: Console) -> None:
+    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
+    cpu = benchmarks.get("cpu_sustained") if isinstance(benchmarks, dict) else None
+    if not isinstance(cpu, dict):
+        return
+
+    section = Table(title="CPU Sustained")
+    section.add_column("Metric", overflow="fold")
+    section.add_column("Value", overflow="fold")
+    section.add_row("mean_iter_per_sec", "null" if cpu.get("mean_iter_per_sec") is None else str(cpu.get("mean_iter_per_sec")))
+    section.add_row("p95_iter_per_sec", "null" if cpu.get("p95_iter_per_sec") is None else str(cpu.get("p95_iter_per_sec")))
+    section.add_row("std_iter_per_sec", "null" if cpu.get("std_iter_per_sec") is None else str(cpu.get("std_iter_per_sec")))
+    console.print(section)
+
+
+def _render_cpu_sustained_compact(report: dict[str, Any]) -> None:
+    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
+    cpu = benchmarks.get("cpu_sustained") if isinstance(benchmarks, dict) else None
+    if not isinstance(cpu, dict):
+        return
+
+    print("CPU Sustained:")
+    print(f"mean_iter_per_sec: {'null' if cpu.get('mean_iter_per_sec') is None else cpu.get('mean_iter_per_sec')}")
+    print(f"p95_iter_per_sec: {'null' if cpu.get('p95_iter_per_sec') is None else cpu.get('p95_iter_per_sec')}")
+    print(f"std_iter_per_sec: {'null' if cpu.get('std_iter_per_sec') is None else cpu.get('std_iter_per_sec')}")
 
 
 __all__ = [

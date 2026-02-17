@@ -32,6 +32,11 @@ dependencies = [
   "packaging>=24.0",
 ]
 
+[project.optional-dependencies]
+profile = [
+  "numpy>=1.24",
+]
+
 [project.scripts]
 continuum = "continuum.cli:app"
 
