@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0.0",
+  "static_profile": {
+    "cpu": {
+      "model": "Apple M3 Pro",
+      "cores_physical": 11,
+      "cores_logical": 11,
+      "arch": "arm64"
+    },
+    "memory": {
+      "total_bytes": 19327352832
+    },
+    "storage": {
+      "root_mount": "/",
+      "root_device": "/dev/disk3s1s1",
+      "is_nvme": false,
+      "is_ssd": null,
+      "filesystem_type": "apfs",
+      "notes": []
+    },
+    "os": {
+      "name": "Darwin",
+      "version": "Darwin Kernel Version 25.2.0: Tue Nov 18 21:09:45 PST 2025; root:xnu-12377.61.12~1/RELEASE_ARM64_T6030",
+      "kernel": "25.2.0"
+    },
+    "runtime": {
+      "python_version": "3.13.5",
+      "torch_version": null,
+      "torch_cuda_available": null,
+      "torch_cuda_version": null,
+      "platform": "macOS-26.2-arm64-arm-64bit-Mach-O"
+    },
+    "notes": [
+      "Torch is not installed in the active environment.",
+      "NumPy is not installed; CPU sustained benchmark skipped.",
+      "NumPy not installed; using stdlib bytearray copy fallback (lower fidelity)."
+    ]
+  },
+  "benchmark_results": [],
+  "benchmarks": {
+    "cpu_sustained": {
+      "mean_iter_per_sec": null,
+      "std_iter_per_sec": null,
+      "p50_iter_per_sec": null,
+      "p95_iter_per_sec": null,
+      "iterations": null,
+      "duration_sec": null
+    },
+    "memory_bandwidth": {
+      "mean_gbps": 51.920124,
+      "std_gbps": 1.504195,
+      "p50_gbps": 52.206809,
+      "p95_gbps": 53.091574,
+      "iterations": 1546,
+      "duration_sec": 8.002026,
+      "bytes_per_iter": 268435456
+    }
+  }
+}

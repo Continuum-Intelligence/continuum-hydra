@@ -25,13 +25,15 @@ except Exception:  # pragma: no cover
 
 from continuum.profiler.formatters import build_profile_report, render_profile_human, write_profile_json
 from continuum.profiler.cpu_benchmark import run_cpu_benchmark
+from continuum.profiler.memory_bandwidth import run_memory_bandwidth
 from continuum.profiler.static_profile import collect_static_profile
 
 AVAILABLE_BENCHMARKS = {
     "static": collect_static_profile,
     "cpu": run_cpu_benchmark,
+    "memory": run_memory_bandwidth,
 }
-_BENCHMARK_ORDER = ("static", "cpu")
+_BENCHMARK_ORDER = ("static", "cpu", "memory")
 _OUTPUT_FORMATS = {"human", "json", "both"}
 
 
@@ -39,7 +41,7 @@ def profile_command(
     benchmarks: str | None = typer.Option(
         None,
         "--benchmarks",
-        help="Comma-separated benchmark keys to run: static,cpu",
+        help="Comma-separated benchmark keys to run: static,cpu,memory",
     ),
     static_only: bool = typer.Option(
         False,
@@ -55,6 +57,9 @@ def profile_command(
     no_write: bool = typer.Option(False, "--no-write", help="Do not write JSON report to disk."),
     cpu_duration: float = typer.Option(8.0, "--cpu-duration", help="CPU benchmark measurement duration in seconds."),
     cpu_warmup: float = typer.Option(2.0, "--cpu-warmup", help="CPU benchmark warmup duration in seconds."),
+    mem_duration: float = typer.Option(8.0, "--mem-duration", help="Memory benchmark measurement duration in seconds."),
+    mem_warmup: float = typer.Option(2.0, "--mem-warmup", help="Memory benchmark warmup duration in seconds."),
+    mem_mb: int | None = typer.Option(None, "--mem-mb", help="Memory benchmark buffer size in MB."),
     verbose: bool = typer.Option(False, "--verbose", help="Print traceback on unexpected profiler errors."),
 ) -> None:
     try:
@@ -68,6 +73,9 @@ def profile_command(
             "static_only": static_only,
             "cpu_duration": cpu_duration,
             "cpu_warmup": cpu_warmup,
+            "mem_duration": mem_duration,
+            "mem_warmup": mem_warmup,
+            "mem_mb": mem_mb,
         }
         static_profile: dict[str, Any] = {}
         benchmarks_payload: dict[str, Any] = {}

@@ -50,7 +50,6 @@ def render_profile_human(report: dict[str, Any], console: Console | None = None)
         for row in rows:
             table.add_row(_style_status(row["status"]), row["item"], row["result"], row["benchmark"])
         active_console.print(table)
-    _render_cpu_sustained_rich(report, active_console)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -67,7 +66,6 @@ def _render_profile_compact(report: dict[str, Any]) -> None:
         print("STATUS ITEM RESULT BENCHMARK")
         for row in rows:
             print(f"[{row['status']}] {row['item']} | {row['result']} | {row['benchmark']}")
-    _render_cpu_sustained_compact(report)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -180,6 +178,25 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
                 }
             )
 
+    memory_bandwidth = benchmarks.get("memory_bandwidth") if isinstance(benchmarks, dict) else None
+    if isinstance(memory_bandwidth, dict):
+        mem_fields = [
+            ("benchmarks.memory_bandwidth.mean_gbps", memory_bandwidth.get("mean_gbps")),
+            ("benchmarks.memory_bandwidth.p95_gbps", memory_bandwidth.get("p95_gbps")),
+            ("benchmarks.memory_bandwidth.std_gbps", memory_bandwidth.get("std_gbps")),
+            ("benchmarks.memory_bandwidth.iterations", memory_bandwidth.get("iterations")),
+            ("benchmarks.memory_bandwidth.duration_sec", memory_bandwidth.get("duration_sec")),
+        ]
+        for item, value in mem_fields:
+            rows.append(
+                {
+                    "status": _status_for_value(value),
+                    "item": item,
+                    "result": "null" if value is None else str(value),
+                    "benchmark": "memory_bandwidth",
+                }
+            )
+
     return rows
 
 
@@ -208,6 +225,37 @@ def _render_cpu_sustained_compact(report: dict[str, Any]) -> None:
     print(f"mean_iter_per_sec: {'null' if cpu.get('mean_iter_per_sec') is None else cpu.get('mean_iter_per_sec')}")
     print(f"p95_iter_per_sec: {'null' if cpu.get('p95_iter_per_sec') is None else cpu.get('p95_iter_per_sec')}")
     print(f"std_iter_per_sec: {'null' if cpu.get('std_iter_per_sec') is None else cpu.get('std_iter_per_sec')}")
+
+
+def _render_memory_bandwidth_rich(report: dict[str, Any], console: Console) -> None:
+    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
+    mem = benchmarks.get("memory_bandwidth") if isinstance(benchmarks, dict) else None
+    if not isinstance(mem, dict):
+        return
+
+    section = Table(title="Memory Bandwidth")
+    section.add_column("Metric", overflow="fold")
+    section.add_column("Value", overflow="fold")
+    section.add_row("mean_gbps", "null" if mem.get("mean_gbps") is None else str(mem.get("mean_gbps")))
+    section.add_row("p95_gbps", "null" if mem.get("p95_gbps") is None else str(mem.get("p95_gbps")))
+    section.add_row("std_gbps", "null" if mem.get("std_gbps") is None else str(mem.get("std_gbps")))
+    section.add_row("bytes_per_iter", "null" if mem.get("bytes_per_iter") is None else str(mem.get("bytes_per_iter")))
+    section.add_row("duration_sec", "null" if mem.get("duration_sec") is None else str(mem.get("duration_sec")))
+    console.print(section)
+
+
+def _render_memory_bandwidth_compact(report: dict[str, Any]) -> None:
+    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
+    mem = benchmarks.get("memory_bandwidth") if isinstance(benchmarks, dict) else None
+    if not isinstance(mem, dict):
+        return
+
+    print("Memory Bandwidth:")
+    print(f"mean_gbps: {'null' if mem.get('mean_gbps') is None else mem.get('mean_gbps')}")
+    print(f"p95_gbps: {'null' if mem.get('p95_gbps') is None else mem.get('p95_gbps')}")
+    print(f"std_gbps: {'null' if mem.get('std_gbps') is None else mem.get('std_gbps')}")
+    print(f"bytes_per_iter: {'null' if mem.get('bytes_per_iter') is None else mem.get('bytes_per_iter')}")
+    print(f"duration_sec: {'null' if mem.get('duration_sec') is None else mem.get('duration_sec')}")
 
 
 __all__ = [

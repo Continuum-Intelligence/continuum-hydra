@@ -47,7 +47,8 @@ class TestProfileMain(unittest.TestCase):
     def test_no_static_produces_empty_static_profile(self) -> None:
         mock_static = unittest.mock.Mock(return_value={"cpu": {"model": "X"}})
         mock_cpu = unittest.mock.Mock(return_value={"cpu_sustained": {"iterations": 1}})
-        registry = {"static": mock_static, "cpu": mock_cpu}
+        mock_mem = unittest.mock.Mock(return_value={"memory_bandwidth": {"iterations": 1}})
+        registry = {"static": mock_static, "cpu": mock_cpu, "memory": mock_mem}
         with patch("continuum.profiler.main.AVAILABLE_BENCHMARKS", registry):
             with patch("continuum.profiler.main.render_profile_human"):
                 with patch("continuum.profiler.main.typer.echo"):
@@ -82,7 +83,8 @@ class TestProfileMain(unittest.TestCase):
     def test_output_format_json_suppresses_human_output(self) -> None:
         mock_static = unittest.mock.Mock(return_value={"cpu": {"model": "X"}})
         mock_cpu = unittest.mock.Mock(return_value={"cpu_sustained": {"iterations": 1}})
-        registry = {"static": mock_static, "cpu": mock_cpu}
+        mock_mem = unittest.mock.Mock(return_value={"memory_bandwidth": {"iterations": 1}})
+        registry = {"static": mock_static, "cpu": mock_cpu, "memory": mock_mem}
         with patch("continuum.profiler.main.AVAILABLE_BENCHMARKS", registry):
             with patch("continuum.profiler.main.render_profile_human") as mock_render:
                 with patch("continuum.profiler.main.typer.echo"):
@@ -97,7 +99,8 @@ class TestProfileMain(unittest.TestCase):
     def test_default_behavior_runs_all(self) -> None:
         mock_static = unittest.mock.Mock(return_value={"cpu": {"model": "X"}})
         mock_cpu = unittest.mock.Mock(return_value={"cpu_sustained": {"iterations": 1}})
-        registry = {"static": mock_static, "cpu": mock_cpu}
+        mock_mem = unittest.mock.Mock(return_value={"memory_bandwidth": {"iterations": 1}})
+        registry = {"static": mock_static, "cpu": mock_cpu, "memory": mock_mem}
         with patch("continuum.profiler.main.AVAILABLE_BENCHMARKS", registry):
             with patch("continuum.profiler.main.render_profile_human") as mock_render:
                 with patch("continuum.profiler.main.typer.echo"):
@@ -108,6 +111,7 @@ class TestProfileMain(unittest.TestCase):
         self._assert_exit_code(cm.exception, 0)
         mock_static.assert_called_once()
         mock_cpu.assert_called_once()
+        mock_mem.assert_called_once()
         mock_render.assert_called_once()
 
 
