@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -8,6 +9,7 @@ from pathlib import Path
 
 if find_spec("typer") is not None:
     from typer.testing import CliRunner
+
     from continuum.cli import app
 else:
     CliRunner = None
@@ -16,7 +18,7 @@ else:
 
 @unittest.skipIf(find_spec("typer") is None, "typer is not installed in this interpreter")
 class TestAccelerateCli(unittest.TestCase):
-    def test_dry_run_writes_state_report(self) -> None:
+    def test_json_prints_only_json_to_stdout(self) -> None:
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmp:
             previous = Path.cwd()
@@ -24,16 +26,46 @@ class TestAccelerateCli(unittest.TestCase):
                 os.chdir(tmp)
                 result = runner.invoke(app, ["accelerate", "--dry-run", "--json"], catch_exceptions=False)
                 self.assertEqual(result.exit_code, 0)
-                self.assertIn("Accelerate Summary", result.output)
-                self.assertTrue((Path(tmp) / ".hydra" / "state" / "accelerate_latest.json").exists())
+                payload = json.loads(result.stdout)
+                self.assertEqual(payload["mode"], "dry-run")
+                self.assertNotIn("Hydra Accelerate Plan", result.stdout)
+                self.assertNotIn("Hydra Accelerate Plan", result.stderr)
             finally:
                 os.chdir(previous)
 
-    def test_help_shows_accelerate(self) -> None:
+    def test_invalid_profile_returns_2(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(app, ["accelerate", "--help"], catch_exceptions=False)
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Hydra Accelerate", result.output)
+        result = runner.invoke(app, ["accelerate", "--profile", "ultra"], catch_exceptions=False)
+        self.assertEqual(result.exit_code, 2)
+
+    def test_unknown_only_category_returns_2(self) -> None:
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            previous = Path.cwd()
+            try:
+                os.chdir(tmp)
+                result = runner.invoke(app, ["accelerate", "--dry-run", "--only", "unknown"], catch_exceptions=False)
+                self.assertEqual(result.exit_code, 2)
+            finally:
+                os.chdir(previous)
+
+    def test_deterministic_action_ordering_in_json(self) -> None:
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            previous = Path.cwd()
+            try:
+                os.chdir(tmp)
+                result = runner.invoke(
+                    app,
+                    ["accelerate", "--dry-run", "--json", "--no-timestamp"],
+                    catch_exceptions=False,
+                )
+                self.assertEqual(result.exit_code, 0)
+                payload = json.loads(result.stdout)
+                ids = [entry["action_id"] for entry in payload["plan"]["recommendations"]]
+                self.assertEqual(ids, sorted(ids))
+            finally:
+                os.chdir(previous)
 
 
 if __name__ == "__main__":

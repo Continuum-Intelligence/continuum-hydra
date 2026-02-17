@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from continuum.accelerate.models import ActionDescriptor, AccelerationActionResult, AccelerationPlan, ExecutionContext
+from continuum.accelerate.plugins.loader import HookBundle, PluginLoadResult
 from continuum.accelerate.reporting import build_report, write_state_report
 
 
@@ -50,8 +51,15 @@ class TestAccelerateReporting(unittest.TestCase):
                 risk="low",
             )
         ]
+        plugin_result = PluginLoadResult(
+            actions_loaded=0,
+            hooks=HookBundle(),
+            warnings=[],
+            loaded_files=[],
+            failures=[],
+        )
 
-        report = build_report(plan, results, ctx, {"process.priority"}, dry_run=True)
+        report = build_report(plan, results, ctx, {"process.priority"}, dry_run=True, plugin_result=plugin_result)
 
         with tempfile.TemporaryDirectory() as tmp:
             latest = write_state_report(report, cwd=Path(tmp))
@@ -59,6 +67,7 @@ class TestAccelerateReporting(unittest.TestCase):
             payload = json.loads(latest.read_text(encoding="utf-8"))
             self.assertEqual(payload["summary"]["total"], 1)
             self.assertEqual(payload["mode"], "dry-run")
+            self.assertIn("plugin_summary", payload)
 
 
 if __name__ == "__main__":

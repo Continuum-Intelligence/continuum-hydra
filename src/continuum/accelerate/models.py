@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from hashlib import sha1
 from pathlib import Path
 from typing import Any
 
@@ -80,13 +81,25 @@ class AccelerationPlan:
     warnings: list[str] = field(default_factory=list)
 
     @classmethod
-    def create(cls, profile: str, recommendations: list[ActionDescriptor], warnings: list[str] | None = None) -> "AccelerationPlan":
+    def create(
+        cls,
+        profile: str,
+        recommendations: list[ActionDescriptor],
+        warnings: list[str] | None = None,
+        include_timestamp: bool = True,
+    ) -> "AccelerationPlan":
         now = datetime.now(timezone.utc)
-        plan_id = f"accel-{now.strftime('%Y%m%d%H%M%S')}"
+        if include_timestamp:
+            created_at = now.isoformat()
+            plan_id = f"accel-{now.strftime('%Y%m%d%H%M%S')}"
+        else:
+            created_at = ""
+            signature = "|".join([profile, *sorted(rec.action_id for rec in recommendations)])
+            plan_id = f"accel-{sha1(signature.encode('utf-8')).hexdigest()[:12]}"
         return cls(
             schema_version=ACCELERATE_SCHEMA_VERSION,
             plan_id=plan_id,
-            created_at=now.isoformat(),
+            created_at=created_at,
             profile=profile,
             recommendations=recommendations,
             warnings=list(warnings or []),
@@ -116,6 +129,13 @@ class AccelerationActionResult:
     after: dict[str, Any] = field(default_factory=dict)
     commands: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    returncodes: dict[str, int] = field(default_factory=dict)
+    stdout_tail: list[str] = field(default_factory=list)
+    stderr_tail: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.applied and not self.skipped_reason:
+            raise ValueError("skipped_reason is required when applied is False")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -130,6 +150,9 @@ class AccelerationActionResult:
             "after": dict(self.after),
             "commands": list(self.commands),
             "errors": list(self.errors),
+            "returncodes": dict(self.returncodes),
+            "stdout_tail": list(self.stdout_tail),
+            "stderr_tail": list(self.stderr_tail),
         }
 
 

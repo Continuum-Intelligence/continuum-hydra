@@ -9,7 +9,7 @@ from typing import Any
 
 from continuum.accelerate.actions import register_builtin_actions
 from continuum.accelerate.models import ActionDescriptor, AccelerationAction, AccelerationPlan, ExecutionContext, normalize_profile
-from continuum.accelerate.plugins.loader import HookBundle, load_plugins
+from continuum.accelerate.plugins.loader import PluginLoadResult, load_plugins
 from continuum.accelerate.registry import clear_registry, filter_actions, get_actions, register_action
 
 
@@ -55,8 +55,9 @@ def build_plan(
     only: set[str] | None,
     exclude: set[str] | None,
     expert_mode: bool = False,
+    include_timestamp: bool = True,
     cwd: Path | None = None,
-) -> tuple[AccelerationPlan, list[dict[str, Any]], ExecutionContext, HookBundle]:
+) -> tuple[AccelerationPlan, list[dict[str, Any]], ExecutionContext, PluginLoadResult]:
     base = cwd if cwd is not None else Path.cwd()
     ctx = build_context(base)
     normalized_profile = normalize_profile(profile)
@@ -143,9 +144,10 @@ def build_plan(
         profile=normalized_profile,
         recommendations=descriptors,
         warnings=plugin_result.warnings,
+        include_timestamp=include_timestamp,
     )
 
-    return plan, internal_data, runtime_ctx, plugin_result.hooks
+    return plan, internal_data, runtime_ctx, plugin_result
 
 
 __all__ = ["build_context", "build_plan"]

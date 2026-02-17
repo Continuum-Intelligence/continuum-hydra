@@ -22,6 +22,8 @@ class PluginLoadResult:
     actions_loaded: int
     hooks: HookBundle
     warnings: list[str]
+    loaded_files: list[str]
+    failures: list[str]
 
 
 def _load_module(file_path: Path) -> Any:
@@ -40,16 +42,19 @@ def load_plugins(register_action: Callable[[Any], None], cwd: Path | None = None
     plugin_dir = base / ".hydra" / "accelerate.d"
     hooks = HookBundle()
     warnings: list[str] = []
+    loaded_files: list[str] = []
+    failures: list[str] = []
     actions_loaded = 0
 
     if not plugin_dir.exists() or not plugin_dir.is_dir():
-        return PluginLoadResult(actions_loaded=0, hooks=hooks, warnings=[])
+        return PluginLoadResult(actions_loaded=0, hooks=hooks, warnings=[], loaded_files=[], failures=[])
 
     files = sorted(path for path in plugin_dir.iterdir() if path.is_file())
 
     for file_path in files:
         try:
             if file_path.suffix == ".sh":
+                loaded_files.append(file_path.name)
                 if "post" in file_path.stem:
                     hooks.post_apply_shell.append(file_path)
                 else:
@@ -59,6 +64,7 @@ def load_plugins(register_action: Callable[[Any], None], cwd: Path | None = None
             if file_path.suffix != ".py":
                 continue
 
+            loaded_files.append(file_path.name)
             module = _load_module(file_path)
 
             if hasattr(module, "register") and callable(module.register):
@@ -79,9 +85,17 @@ def load_plugins(register_action: Callable[[Any], None], cwd: Path | None = None
                 if hasattr(module, "post_apply") and callable(module.post_apply):
                     hooks.post_apply_py.append(module.post_apply)
         except Exception as exc:  # noqa: BLE001
-            warnings.append(f"Plugin load failed for {file_path.name}: {type(exc).__name__}: {exc}")
+            message = f"Plugin load failed for {file_path.name}: {type(exc).__name__}: {exc}"
+            warnings.append(message)
+            failures.append(message)
 
-    return PluginLoadResult(actions_loaded=actions_loaded, hooks=hooks, warnings=warnings)
+    return PluginLoadResult(
+        actions_loaded=actions_loaded,
+        hooks=hooks,
+        warnings=warnings,
+        loaded_files=sorted(loaded_files),
+        failures=sorted(failures),
+    )
 
 
 def run_shell_hooks(paths: list[Path], ctx: dict[str, Any], plan: dict[str, Any], selected_ids: set[str]) -> list[str]:

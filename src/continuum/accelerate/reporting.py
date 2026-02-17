@@ -7,6 +7,7 @@ from typing import Any
 from rich.console import Console
 
 from continuum.accelerate.models import ACCELERATE_SCHEMA_VERSION, AccelerationActionResult, AccelerationPlan, ExecutionContext
+from continuum.accelerate.plugins.loader import PluginLoadResult
 
 
 def write_json(path: Path, data: dict[str, Any]) -> None:
@@ -30,11 +31,13 @@ def build_report(
     ctx: ExecutionContext,
     selected_action_ids: set[str],
     dry_run: bool,
+    plugin_result: PluginLoadResult,
     hook_warnings: list[str] | None = None,
 ) -> dict[str, Any]:
-    applied_count = sum(1 for result in action_results if result.applied)
-    unsupported_count = sum(1 for result in action_results if not result.supported)
-    skipped_count = sum(1 for result in action_results if not result.applied and result.skipped_reason is not None)
+    sorted_results = sorted(action_results, key=lambda result: result.action_id)
+    applied_count = sum(1 for result in sorted_results if result.applied)
+    unsupported_count = sum(1 for result in sorted_results if not result.supported)
+    skipped_count = sum(1 for result in sorted_results if not result.applied and result.skipped_reason is not None)
 
     return {
         "schema_version": ACCELERATE_SCHEMA_VERSION,
@@ -48,7 +51,16 @@ def build_report(
             "unsupported": unsupported_count,
             "total": len(action_results),
         },
-        "results": [result.to_dict() for result in action_results],
+        "results": [result.to_dict() for result in sorted_results],
+        "plugin_summary": {
+            "actions_loaded": plugin_result.actions_loaded,
+            "loaded_files": list(plugin_result.loaded_files),
+            "failures": list(plugin_result.failures),
+            "pre_apply_shell": [str(path) for path in plugin_result.hooks.pre_apply_shell],
+            "post_apply_shell": [str(path) for path in plugin_result.hooks.post_apply_shell],
+            "pre_apply_py_count": len(plugin_result.hooks.pre_apply_py),
+            "post_apply_py_count": len(plugin_result.hooks.post_apply_py),
+        },
         "warnings": list(plan.warnings) + list(hook_warnings or []),
     }
 

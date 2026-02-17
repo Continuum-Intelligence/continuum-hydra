@@ -141,6 +141,9 @@ class NvidiaPersistenceAction(AccelerationAction):
             after=after,
             commands=[" ".join(command)],
             errors=[] if completed.returncode == 0 else [completed.stderr.strip() or "Unknown nvidia-smi error"],
+            returncodes={"nvidia-smi -pm 1": completed.returncode},
+            stdout_tail=[line for line in completed.stdout.strip().splitlines()[-5:] if line],
+            stderr_tail=[line for line in completed.stderr.strip().splitlines()[-5:] if line],
         )
 
 
