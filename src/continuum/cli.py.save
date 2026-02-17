@@ -1,0 +1,11 @@
+rom __future__ import annotations
+
+import typer
+
+from continuum.doctor.main import doctor_command
+
+app = typer.Typer(help="Continuum CLI")
+app.command("doctor")(doctor_command)
+
+
+__all__ = ["app"]
