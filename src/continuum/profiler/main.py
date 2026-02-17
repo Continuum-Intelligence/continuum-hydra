@@ -26,8 +26,10 @@ except Exception:  # pragma: no cover
 from continuum.profiler.formatters import build_profile_report, render_profile_human, write_profile_json
 from continuum.profiler.analysis import classify_bottleneck
 from continuum.profiler.cpu_benchmark import run_cpu_benchmark
+from continuum.profiler.disk_benchmark import run_disk_benchmark
 from continuum.profiler.gpu_benchmark import run_gpu_benchmark
 from continuum.profiler.memory_bandwidth import run_memory_bandwidth
+from continuum.profiler.remediation import generate_remediation
 from continuum.profiler.static_profile import collect_static_profile
 
 AVAILABLE_BENCHMARKS = {
@@ -35,8 +37,9 @@ AVAILABLE_BENCHMARKS = {
     "cpu": run_cpu_benchmark,
     "memory": run_memory_bandwidth,
     "gpu": run_gpu_benchmark,
+    "disk": run_disk_benchmark,
 }
-_BENCHMARK_ORDER = ("static", "cpu", "memory", "gpu")
+_BENCHMARK_ORDER = ("static", "cpu", "memory", "gpu", "disk")
 _OUTPUT_FORMATS = {"human", "json", "both"}
 
 
@@ -44,31 +47,37 @@ def profile_command(
     benchmarks: str | None = typer.Option(
         None,
         "--benchmarks",
-        help="Comma-separated benchmark keys to run: static,cpu,memory,gpu",
+        help="Comma-separated benchmark keys to run: static,cpu,memory,gpu,disk",
+        rich_help_panel="Selection",
     ),
     static_only: bool = typer.Option(
         False,
         "--static-only",
         help="Run only static machine characterization and skip benchmarks.",
+        rich_help_panel="Selection",
     ),
-    no_static: bool = typer.Option(False, "--no-static", help="Exclude static profile section from output."),
-    no_benchmarks: bool = typer.Option(False, "--no-benchmarks", help="Exclude benchmarks section from output."),
-    output_format: str = typer.Option("human", "--output-format", help="Output format: human, json, or both."),
-    quiet: bool = typer.Option(False, "--quiet", help="Suppress human output (equivalent to --output-format json)."),
-    json_output: bool = typer.Option(False, "--json", help="Also print JSON report to stdout."),
-    export: Path | None = typer.Option(None, "--export", help="Directory to write JSON report."),
-    no_write: bool = typer.Option(False, "--no-write", help="Do not write JSON report to disk."),
-    cpu_duration: float = typer.Option(8.0, "--cpu-duration", help="CPU benchmark measurement duration in seconds."),
-    cpu_warmup: float = typer.Option(2.0, "--cpu-warmup", help="CPU benchmark warmup duration in seconds."),
-    mem_duration: float = typer.Option(8.0, "--mem-duration", help="Memory benchmark measurement duration in seconds."),
-    mem_warmup: float = typer.Option(2.0, "--mem-warmup", help="Memory benchmark warmup duration in seconds."),
-    mem_mb: int | None = typer.Option(None, "--mem-mb", help="Memory benchmark buffer size in MB."),
-    gpu_duration: float = typer.Option(8.0, "--gpu-duration", help="GPU benchmark measurement duration in seconds."),
-    gpu_warmup: float = typer.Option(2.0, "--gpu-warmup", help="GPU benchmark warmup duration in seconds."),
-    gpu_size: int | None = typer.Option(None, "--gpu-size", help="GPU benchmark matrix dimension override."),
-    gpu_dtype: str = typer.Option("auto", "--gpu-dtype", help="GPU benchmark dtype: float16, bfloat16, float32, auto."),
-    no_gpu: bool = typer.Option(False, "--no-gpu", help="Skip GPU sustained benchmark."),
-    verbose: bool = typer.Option(False, "--verbose", help="Print traceback on unexpected profiler errors."),
+    no_static: bool = typer.Option(False, "--no-static", help="Exclude static profile section from output.", rich_help_panel="Selection"),
+    no_benchmarks: bool = typer.Option(False, "--no-benchmarks", help="Exclude benchmarks section from output.", rich_help_panel="Selection"),
+    output_format: str = typer.Option("human", "--output-format", help="Output format: human, json, or both.", rich_help_panel="Output"),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress human output (equivalent to --output-format json).", rich_help_panel="Output"),
+    json_output: bool = typer.Option(False, "--json", help="Also print JSON report to stdout.", rich_help_panel="Output"),
+    export: Path | None = typer.Option(None, "--export", help="Directory to write JSON report.", rich_help_panel="Output"),
+    no_write: bool = typer.Option(False, "--no-write", help="Do not write JSON report to disk.", rich_help_panel="Output"),
+    cpu_duration: float = typer.Option(8.0, "--cpu-duration", help="CPU benchmark measurement duration in seconds.", rich_help_panel="CPU Benchmark"),
+    cpu_warmup: float = typer.Option(2.0, "--cpu-warmup", help="CPU benchmark warmup duration in seconds.", rich_help_panel="CPU Benchmark"),
+    mem_duration: float = typer.Option(8.0, "--mem-duration", help="Memory benchmark measurement duration in seconds.", rich_help_panel="Memory Benchmark"),
+    mem_warmup: float = typer.Option(2.0, "--mem-warmup", help="Memory benchmark warmup duration in seconds.", rich_help_panel="Memory Benchmark"),
+    mem_mb: int | None = typer.Option(None, "--mem-mb", help="Memory benchmark buffer size in MB.", rich_help_panel="Memory Benchmark"),
+    gpu_duration: float = typer.Option(8.0, "--gpu-duration", help="GPU benchmark measurement duration in seconds.", rich_help_panel="GPU Benchmark"),
+    gpu_warmup: float = typer.Option(2.0, "--gpu-warmup", help="GPU benchmark warmup duration in seconds.", rich_help_panel="GPU Benchmark"),
+    gpu_size: int | None = typer.Option(None, "--gpu-size", help="GPU benchmark matrix dimension override.", rich_help_panel="GPU Benchmark"),
+    gpu_dtype: str = typer.Option("auto", "--gpu-dtype", help="GPU benchmark dtype: float16, bfloat16, float32, auto.", rich_help_panel="GPU Benchmark"),
+    no_gpu: bool = typer.Option(False, "--no-gpu", help="Skip GPU sustained benchmark.", rich_help_panel="GPU Benchmark"),
+    disk_duration: float = typer.Option(8.0, "--disk-duration", help="Disk random I/O benchmark measurement duration in seconds.", rich_help_panel="Disk Benchmark"),
+    disk_warmup: float = typer.Option(2.0, "--disk-warmup", help="Disk random I/O benchmark warmup duration in seconds.", rich_help_panel="Disk Benchmark"),
+    disk_size_mb: int = typer.Option(256, "--disk-size-mb", help="Disk random I/O temp file size in MB.", rich_help_panel="Disk Benchmark"),
+    no_disk: bool = typer.Option(False, "--no-disk", help="Skip disk random I/O benchmark.", rich_help_panel="Disk Benchmark"),
+    verbose: bool = typer.Option(False, "--verbose", help="Print traceback on unexpected profiler errors.", rich_help_panel="Debug"),
 ) -> None:
     try:
         selected = _parse_selected_benchmarks(benchmarks)
@@ -89,6 +98,10 @@ def profile_command(
             "gpu_size": gpu_size,
             "gpu_dtype": gpu_dtype,
             "no_gpu": no_gpu,
+            "disk_duration": disk_duration,
+            "disk_warmup": disk_warmup,
+            "disk_size_mb": disk_size_mb,
+            "no_disk": no_disk,
         }
         static_profile: dict[str, Any] = {}
         benchmarks_payload: dict[str, Any] = {}
@@ -117,6 +130,7 @@ def profile_command(
 
         report = build_profile_report(static_profile, benchmarks=benchmarks_payload)
         report["analysis"] = classify_bottleneck(report)
+        report["remediation"] = generate_remediation(report)
 
         effective_output_format = _resolve_output_format(
             output_format=output_format,

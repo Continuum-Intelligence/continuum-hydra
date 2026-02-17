@@ -39,6 +39,7 @@ profile = [
 
 [project.scripts]
 continuum = "continuum.cli:app"
+continuum-profile = "continuum.profiler.main:profile_command"
 
 [project.urls]
 Homepage = "https://github.com/Continuum-Intelligence/continuum-hydra"

@@ -10,6 +10,7 @@ def classify_bottleneck(report: dict[str, Any]) -> dict[str, Any]:
     cpu = _as_dict(benchmarks.get("cpu_sustained"))
     mem = _as_dict(benchmarks.get("memory_bandwidth"))
     gpu = _as_dict(benchmarks.get("gpu_sustained"))
+    disk = _as_dict(benchmarks.get("disk_random_io"))
 
     cpu_mean = _to_float(cpu.get("mean_iter_per_sec"))
     cpu_std = _to_float(cpu.get("std_iter_per_sec"))
@@ -22,6 +23,7 @@ def classify_bottleneck(report: dict[str, Any]) -> dict[str, Any]:
     gpu_mean = _to_float(gpu.get("mean_iter_per_sec"))
     gpu_std = _to_float(gpu.get("std_iter_per_sec"))
     gpu_p95 = _to_float(gpu.get("p95_iter_per_sec"))
+    disk_mean = _to_float(disk.get("mean_read_mb_s"))
 
     cpu_cv = _safe_div(cpu_std, cpu_mean)
     mem_cv = _safe_div(mem_std, mem_mean)
@@ -32,9 +34,12 @@ def classify_bottleneck(report: dict[str, Any]) -> dict[str, Any]:
     gpu_stability_ratio = _safe_div(gpu_p95, gpu_mean)
 
     os_name = str(_as_dict(static_profile.get("os")).get("name") or "")
-    arch = str(_as_dict(static_profile.get("cpu")).get("arch") or "")
+    cpu_info = _as_dict(static_profile.get("cpu"))
+    arch = str(cpu_info.get("arch") or "")
+    storage = _as_dict(static_profile.get("storage"))
 
     mem_floor = 60.0 if ("darwin" in os_name.lower() and "arm" in arch.lower()) else 25.0
+    disk_floor = _disk_floor(storage)
 
     signals: dict[str, Any] = {
         "cpu_cv": _rounded(cpu_cv),
@@ -44,11 +49,14 @@ def classify_bottleneck(report: dict[str, Any]) -> dict[str, Any]:
         "mem_stability_ratio": _rounded(mem_stability_ratio),
         "gpu_stability_ratio": _rounded(gpu_stability_ratio),
         "mem_expected_floor_gbps": mem_floor,
+        "disk_expected_floor_mb_s": disk_floor,
+        "disk_mean_read_mb_s": _rounded(disk_mean),
     }
 
     scores = {
         "gpu_compute": 0.0,
         "memory_bandwidth": 0.0,
+        "disk_io": 0.0,
         "cpu_compute": 0.0,
         "gpu_instability": 0.0,
         "cpu_instability": 0.0,
@@ -97,14 +105,21 @@ def classify_bottleneck(report: dict[str, Any]) -> dict[str, Any]:
             scores["gpu_compute"] += 0.45
             reasons.append(f"GPU sustained mean {gpu_mean:.3f} iter/s is consistently low without instability flags.")
 
+    if disk_mean is not None:
+        if disk_mean < disk_floor:
+            scores["disk_io"] += 0.85
+            reasons.append(f"Disk random read mean {disk_mean:.3f} MB/s below heuristic floor {disk_floor:.1f} MB/s.")
+        else:
+            scores["disk_io"] += 0.05
+
     families_present = sum(
         1
-        for value in (cpu_mean, mem_mean, gpu_mean)
+        for value in (cpu_mean, mem_mean, gpu_mean, disk_mean)
         if value is not None
     )
-    missing_families = 3 - families_present
+    missing_families = 4 - families_present
     if families_present == 0:
-        reasons.append("CPU, memory, and GPU sustained benchmark signals are missing.")
+        reasons.append("CPU, memory, GPU, and disk sustained benchmark signals are missing.")
         scores["unknown"] += 0.4
 
     ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
@@ -172,6 +187,12 @@ def _recommendations_for(primary: str | None) -> list[str]:
             "Increase arithmetic intensity before increasing memory traffic.",
             "Use mixed precision and kernel fusion where safe.",
         ]
+    if primary == "disk_io":
+        return [
+            "Use NVMe-class storage when possible for dataset reads.",
+            "Use sharded dataset formats to reduce random small-file overhead.",
+            "Increase DataLoader workers and enable prefetch buffering.",
+        ]
     return [
         "Collect additional benchmark runs to improve confidence.",
         "Ensure CPU, memory, and GPU benchmarks are all available.",
@@ -199,6 +220,16 @@ def _safe_div(num: float | None, den: float | None) -> float | None:
 
 def _rounded(value: float | None) -> float | None:
     return None if value is None else round(float(value), 6)
+
+
+def _disk_floor(storage: dict[str, Any]) -> float:
+    is_nvme = storage.get("is_nvme")
+    is_ssd = storage.get("is_ssd")
+    if is_nvme is True or is_ssd is True:
+        return 150.0
+    if is_ssd is False:
+        return 40.0
+    return 150.0
 
 
 __all__ = ["classify_bottleneck"]

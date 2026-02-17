@@ -98,6 +98,31 @@ class TestBottleneckAnalysis(unittest.TestCase):
         self.assertGreaterEqual(float(analysis["confidence"]), 0.0)
         self.assertLessEqual(float(analysis["confidence"]), 1.0)
 
+    def test_disk_io_bottleneck_scenario(self) -> None:
+        report = {
+            "schema_version": "1.0.0",
+            "static_profile": {
+                "storage": {"is_nvme": True, "is_ssd": True},
+                "os": {"name": "Linux"},
+                "cpu": {"arch": "x86_64"},
+            },
+            "benchmarks": {
+                "disk_random_io": {
+                    "mean_read_mb_s": 50.0,
+                    "std_read_mb_s": 2.0,
+                    "p95_read_mb_s": 48.0,
+                    "mean_iops": 12000.0,
+                },
+                "cpu_sustained": {
+                    "mean_iter_per_sec": 1.1,
+                    "std_iter_per_sec": 0.03,
+                    "p95_iter_per_sec": 1.05,
+                },
+            },
+        }
+        analysis = classify_bottleneck(report)
+        self.assertEqual(analysis["primary_bottleneck"], "disk_io")
+
 
 if __name__ == "__main__":
     unittest.main()

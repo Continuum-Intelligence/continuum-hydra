@@ -42,16 +42,20 @@ def render_profile_human(report: dict[str, Any], console: Console | None = None)
     active_console = console or Console()
     rows = _build_status_rows(report)
     if rows:
-        table = Table(title="Continuum Profile Report")
+        table = Table(title="Continuum Profile Report (Static + Benchmarks + Analysis + Remediation)")
         table.add_column("Status", no_wrap=True)
+        table.add_column("Section", overflow="fold")
         table.add_column("Item", overflow="fold")
         table.add_column("Result", overflow="fold")
-        table.add_column("Benchmark", overflow="fold")
         for row in rows:
-            table.add_row(_style_status(row["status"]), row["item"], row["result"], row["benchmark"])
+            table.add_row(
+                _style_status(row["status"]),
+                row["section"],
+                row["item"],
+                row["result"],
+            )
         active_console.print(table)
-    _render_gpu_sustained_rich(report, active_console)
-    _render_analysis_rich(report, active_console)
+    _render_summary_details_rich(report, active_console)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -64,12 +68,11 @@ def render_profile_human(report: dict[str, Any], console: Console | None = None)
 def _render_profile_compact(report: dict[str, Any]) -> None:
     rows = _build_status_rows(report)
     if rows:
-        print("Continuum Profile Report")
-        print("STATUS ITEM RESULT BENCHMARK")
+        print("Continuum Profile Report (Static + Benchmarks + Analysis + Remediation)")
+        print("STATUS ITEM SECTION RESULT")
         for row in rows:
-            print(f"[{row['status']}] {row['item']} | {row['result']} | {row['benchmark']}")
-    _render_gpu_sustained_compact(report)
-    _render_analysis_compact(report)
+            print(f"[{row['status']}] {row['item']} | {row['section']} | {row['result']}")
+    _render_summary_details_compact(report)
 
     static = report.get("static_profile", {}) if isinstance(report, dict) else {}
     notes = static.get("notes") if isinstance(static, dict) else None
@@ -133,9 +136,9 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
             rows.append(
                 {
                     "status": _status_for_value(value),
+                    "section": "Static Profile",
                     "item": item,
                     "result": "null" if value is None else str(value),
-                    "benchmark": "-",
                 }
             )
 
@@ -156,9 +159,9 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
             rows.append(
                 {
                     "status": status if status in {"PASS", "WARN", "FAIL"} else "WARN",
+                    "section": "Legacy Benchmarks",
                     "item": str(benchmark.get("name", "benchmark.unknown")),
                     "result": result_text,
-                    "benchmark": str(benchmark.get("name", "benchmark.unknown")),
                 }
             )
 
@@ -176,9 +179,9 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
             rows.append(
                 {
                     "status": _status_for_value(value),
+                    "section": "CPU Sustained",
                     "item": item,
                     "result": "null" if value is None else str(value),
-                    "benchmark": "cpu_sustained",
                 }
             )
 
@@ -195,9 +198,9 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
             rows.append(
                 {
                     "status": _status_for_value(value),
+                    "section": "Memory Bandwidth",
                     "item": item,
                     "result": "null" if value is None else str(value),
-                    "benchmark": "memory_bandwidth",
                 }
             )
 
@@ -214,9 +217,29 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
             rows.append(
                 {
                     "status": _status_for_value(value),
+                    "section": "GPU Sustained",
                     "item": item,
                     "result": "null" if value is None else str(value),
-                    "benchmark": "gpu_sustained",
+                }
+            )
+
+    disk_random_io = benchmarks.get("disk_random_io") if isinstance(benchmarks, dict) else None
+    if isinstance(disk_random_io, dict):
+        disk_fields = [
+            ("benchmarks.disk_random_io.mean_read_mb_s", disk_random_io.get("mean_read_mb_s")),
+            ("benchmarks.disk_random_io.p95_read_mb_s", disk_random_io.get("p95_read_mb_s")),
+            ("benchmarks.disk_random_io.std_read_mb_s", disk_random_io.get("std_read_mb_s")),
+            ("benchmarks.disk_random_io.mean_iops", disk_random_io.get("mean_iops")),
+            ("benchmarks.disk_random_io.iterations", disk_random_io.get("iterations")),
+            ("benchmarks.disk_random_io.duration_sec", disk_random_io.get("duration_sec")),
+        ]
+        for item, value in disk_fields:
+            rows.append(
+                {
+                    "status": _status_for_value(value),
+                    "section": "Disk Random I/O",
+                    "item": item,
+                    "result": "null" if value is None else str(value),
                 }
             )
 
@@ -227,161 +250,120 @@ def _build_status_rows(report: dict[str, Any]) -> list[dict[str, str]]:
         rows.append(
             {
                 "status": _status_for_value(primary),
+                "section": "Analysis",
                 "item": "analysis.primary_bottleneck",
                 "result": "null" if primary is None else str(primary),
-                "benchmark": "analysis",
             }
         )
         rows.append(
             {
                 "status": _status_for_value(confidence),
+                "section": "Analysis",
                 "item": "analysis.confidence",
                 "result": "null" if confidence is None else str(confidence),
-                "benchmark": "analysis",
+            }
+        )
+
+    remediation = report.get("remediation") if isinstance(report, dict) else None
+    if isinstance(remediation, dict):
+        priority = remediation.get("priority")
+        rows.append(
+            {
+                "status": _status_for_value(priority),
+                "section": "Remediation",
+                "item": "remediation.priority",
+                "result": "null" if priority is None else str(priority),
             }
         )
 
     return rows
 
 
-def _render_cpu_sustained_rich(report: dict[str, Any], console: Console) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    cpu = benchmarks.get("cpu_sustained") if isinstance(benchmarks, dict) else None
-    if not isinstance(cpu, dict):
-        return
-
-    section = Table(title="CPU Sustained")
-    section.add_column("Metric", overflow="fold")
-    section.add_column("Value", overflow="fold")
-    section.add_row("mean_iter_per_sec", "null" if cpu.get("mean_iter_per_sec") is None else str(cpu.get("mean_iter_per_sec")))
-    section.add_row("p95_iter_per_sec", "null" if cpu.get("p95_iter_per_sec") is None else str(cpu.get("p95_iter_per_sec")))
-    section.add_row("std_iter_per_sec", "null" if cpu.get("std_iter_per_sec") is None else str(cpu.get("std_iter_per_sec")))
-    console.print(section)
-
-
-def _render_cpu_sustained_compact(report: dict[str, Any]) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    cpu = benchmarks.get("cpu_sustained") if isinstance(benchmarks, dict) else None
-    if not isinstance(cpu, dict):
-        return
-
-    print("CPU Sustained:")
-    print(f"mean_iter_per_sec: {'null' if cpu.get('mean_iter_per_sec') is None else cpu.get('mean_iter_per_sec')}")
-    print(f"p95_iter_per_sec: {'null' if cpu.get('p95_iter_per_sec') is None else cpu.get('p95_iter_per_sec')}")
-    print(f"std_iter_per_sec: {'null' if cpu.get('std_iter_per_sec') is None else cpu.get('std_iter_per_sec')}")
-
-
-def _render_memory_bandwidth_rich(report: dict[str, Any], console: Console) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    mem = benchmarks.get("memory_bandwidth") if isinstance(benchmarks, dict) else None
-    if not isinstance(mem, dict):
-        return
-
-    section = Table(title="Memory Bandwidth")
-    section.add_column("Metric", overflow="fold")
-    section.add_column("Value", overflow="fold")
-    section.add_row("mean_gbps", "null" if mem.get("mean_gbps") is None else str(mem.get("mean_gbps")))
-    section.add_row("p95_gbps", "null" if mem.get("p95_gbps") is None else str(mem.get("p95_gbps")))
-    section.add_row("std_gbps", "null" if mem.get("std_gbps") is None else str(mem.get("std_gbps")))
-    section.add_row("bytes_per_iter", "null" if mem.get("bytes_per_iter") is None else str(mem.get("bytes_per_iter")))
-    section.add_row("duration_sec", "null" if mem.get("duration_sec") is None else str(mem.get("duration_sec")))
-    console.print(section)
-
-
-def _render_memory_bandwidth_compact(report: dict[str, Any]) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    mem = benchmarks.get("memory_bandwidth") if isinstance(benchmarks, dict) else None
-    if not isinstance(mem, dict):
-        return
-
-    print("Memory Bandwidth:")
-    print(f"mean_gbps: {'null' if mem.get('mean_gbps') is None else mem.get('mean_gbps')}")
-    print(f"p95_gbps: {'null' if mem.get('p95_gbps') is None else mem.get('p95_gbps')}")
-    print(f"std_gbps: {'null' if mem.get('std_gbps') is None else mem.get('std_gbps')}")
-    print(f"bytes_per_iter: {'null' if mem.get('bytes_per_iter') is None else mem.get('bytes_per_iter')}")
-    print(f"duration_sec: {'null' if mem.get('duration_sec') is None else mem.get('duration_sec')}")
-
-
-def _render_gpu_sustained_rich(report: dict[str, Any], console: Console) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    gpu = benchmarks.get("gpu_sustained") if isinstance(benchmarks, dict) else None
-    if not isinstance(gpu, dict):
-        return
-
-    section = Table(title="GPU Sustained")
-    section.add_column("Metric", overflow="fold")
-    section.add_column("Value", overflow="fold")
-    section.add_row("backend", "null" if gpu.get("backend") is None else str(gpu.get("backend")))
-    section.add_row("device", "null" if gpu.get("device") is None else str(gpu.get("device")))
-    section.add_row("dtype", "null" if gpu.get("dtype") is None else str(gpu.get("dtype")))
-    section.add_row("mean_iter_per_sec", "null" if gpu.get("mean_iter_per_sec") is None else str(gpu.get("mean_iter_per_sec")))
-    section.add_row("p95_iter_per_sec", "null" if gpu.get("p95_iter_per_sec") is None else str(gpu.get("p95_iter_per_sec")))
-    section.add_row("std_iter_per_sec", "null" if gpu.get("std_iter_per_sec") is None else str(gpu.get("std_iter_per_sec")))
-    console.print(section)
-
-
-def _render_gpu_sustained_compact(report: dict[str, Any]) -> None:
-    benchmarks = report.get("benchmarks") if isinstance(report, dict) else None
-    gpu = benchmarks.get("gpu_sustained") if isinstance(benchmarks, dict) else None
-    if not isinstance(gpu, dict):
-        return
-
-    print("GPU Sustained:")
-    print(f"backend: {'null' if gpu.get('backend') is None else gpu.get('backend')}")
-    print(f"device: {'null' if gpu.get('device') is None else gpu.get('device')}")
-    print(f"dtype: {'null' if gpu.get('dtype') is None else gpu.get('dtype')}")
-    print(f"mean_iter_per_sec: {'null' if gpu.get('mean_iter_per_sec') is None else gpu.get('mean_iter_per_sec')}")
-    print(f"p95_iter_per_sec: {'null' if gpu.get('p95_iter_per_sec') is None else gpu.get('p95_iter_per_sec')}")
-    print(f"std_iter_per_sec: {'null' if gpu.get('std_iter_per_sec') is None else gpu.get('std_iter_per_sec')}")
-
-
-def _render_analysis_rich(report: dict[str, Any], console: Console) -> None:
+def _render_summary_details_rich(report: dict[str, Any], console: Console) -> None:
     analysis = report.get("analysis") if isinstance(report, dict) else None
-    if not isinstance(analysis, dict):
-        return
+    remediation = report.get("remediation") if isinstance(report, dict) else None
+    details = Table(title="Summary Details")
+    details.add_column("Section", overflow="fold")
+    details.add_column("Detail", overflow="fold")
+    details.add_column("Value", overflow="fold")
+    if isinstance(analysis, dict):
+        details.add_row("Analysis", "primary_bottleneck", "null" if analysis.get("primary_bottleneck") is None else str(analysis.get("primary_bottleneck")))
+        details.add_row("Analysis", "secondary_bottleneck", "null" if analysis.get("secondary_bottleneck") is None else str(analysis.get("secondary_bottleneck")))
+        details.add_row("Analysis", "confidence", "null" if analysis.get("confidence") is None else str(analysis.get("confidence")))
+    if isinstance(remediation, dict):
+        actions = remediation.get("actions")
+        details.add_row("Remediation", "priority", "null" if remediation.get("priority") is None else str(remediation.get("priority")))
+        details.add_row("Remediation", "actions", str(len(actions) if isinstance(actions, list) else 0))
+    if details.row_count > 0:
+        console.print(details)
 
-    section = Table(title="Analysis")
-    section.add_column("Field", overflow="fold")
-    section.add_column("Value", overflow="fold")
-    section.add_row("primary_bottleneck", "null" if analysis.get("primary_bottleneck") is None else str(analysis.get("primary_bottleneck")))
-    section.add_row("secondary_bottleneck", "null" if analysis.get("secondary_bottleneck") is None else str(analysis.get("secondary_bottleneck")))
-    section.add_row("confidence", "null" if analysis.get("confidence") is None else str(analysis.get("confidence")))
-    console.print(section)
+    if isinstance(analysis, dict):
+        reasons = analysis.get("reasons")
+        if isinstance(reasons, list) and reasons:
+            console.print("Top Reasons:")
+            for reason in reasons[:3]:
+                console.print(f"- {reason}")
 
-    reasons = analysis.get("reasons")
-    if isinstance(reasons, list) and reasons:
-        console.print("Top Reasons:")
-        for reason in reasons[:3]:
-            console.print(f"- {reason}")
+        recommendations = analysis.get("recommendations")
+        if isinstance(recommendations, list) and recommendations:
+            console.print("Recommendations:")
+            for rec in recommendations[:3]:
+                console.print(f"- {rec}")
 
-    recommendations = analysis.get("recommendations")
-    if isinstance(recommendations, list) and recommendations:
-        console.print("Recommendations:")
-        for rec in recommendations[:3]:
-            console.print(f"- {rec}")
+    if isinstance(remediation, dict):
+        actions = remediation.get("actions")
+        if isinstance(actions, list) and actions:
+            console.print("Top Actions:")
+            for action in actions[:3]:
+                if not isinstance(action, dict):
+                    continue
+                title = action.get("title")
+                impact = action.get("impact")
+                difficulty = action.get("difficulty")
+                reason = action.get("reason")
+                console.print(
+                    f"- {title} "
+                    f"(impact={impact}, difficulty={difficulty})"
+                    f"{': ' + str(reason) if reason else ''}"
+                )
 
 
-def _render_analysis_compact(report: dict[str, Any]) -> None:
+def _render_summary_details_compact(report: dict[str, Any]) -> None:
     analysis = report.get("analysis") if isinstance(report, dict) else None
-    if not isinstance(analysis, dict):
+    remediation = report.get("remediation") if isinstance(report, dict) else None
+    if not isinstance(analysis, dict) and not isinstance(remediation, dict):
         return
 
-    print("Analysis:")
-    print(f"primary_bottleneck: {'null' if analysis.get('primary_bottleneck') is None else analysis.get('primary_bottleneck')}")
-    print(f"secondary_bottleneck: {'null' if analysis.get('secondary_bottleneck') is None else analysis.get('secondary_bottleneck')}")
-    print(f"confidence: {'null' if analysis.get('confidence') is None else analysis.get('confidence')}")
+    print("Summary Details:")
+    if isinstance(analysis, dict):
+        print(f"analysis.primary_bottleneck: {'null' if analysis.get('primary_bottleneck') is None else analysis.get('primary_bottleneck')}")
+        print(f"analysis.secondary_bottleneck: {'null' if analysis.get('secondary_bottleneck') is None else analysis.get('secondary_bottleneck')}")
+        print(f"analysis.confidence: {'null' if analysis.get('confidence') is None else analysis.get('confidence')}")
+        reasons = analysis.get("reasons")
+        if isinstance(reasons, list) and reasons:
+            print("Top Reasons:")
+            for reason in reasons[:3]:
+                print(f"- {reason}")
+        recommendations = analysis.get("recommendations")
+        if isinstance(recommendations, list) and recommendations:
+            print("Recommendations:")
+            for rec in recommendations[:3]:
+                print(f"- {rec}")
 
-    reasons = analysis.get("reasons")
-    if isinstance(reasons, list) and reasons:
-        print("Top Reasons:")
-        for reason in reasons[:3]:
-            print(f"- {reason}")
-
-    recommendations = analysis.get("recommendations")
-    if isinstance(recommendations, list) and recommendations:
-        print("Recommendations:")
-        for rec in recommendations[:3]:
-            print(f"- {rec}")
+    if isinstance(remediation, dict):
+        print(f"remediation.priority: {'null' if remediation.get('priority') is None else remediation.get('priority')}")
+        actions = remediation.get("actions")
+        if isinstance(actions, list) and actions:
+            print("Top Actions:")
+            for action in actions[:3]:
+                if not isinstance(action, dict):
+                    continue
+                title = action.get("title")
+                impact = action.get("impact")
+                difficulty = action.get("difficulty")
+                reason = action.get("reason")
+                reason_text = f": {reason}" if reason else ""
+                print(f"- {title} (impact={impact}, difficulty={difficulty}){reason_text}")
 
 
 __all__ = [

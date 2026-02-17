@@ -1,31 +1,28 @@
 # continuum-hydra
 
-Hydra is a performance-first ML systems toolkit built under the Continuum infrastructure initiative.
+Hydra is a performance-first ML systems toolkit under the Continuum infrastructure initiative.
 
-Hydra Doctor provides preflight diagnostics for Python/runtime, NVIDIA driver/NVML/GPU visibility, CUDA compatibility/toolkit hints, PyTorch readiness, and soft NCCL checks before training begins.
-
-Hydra is designed to reduce silent training failures, version mismatches, and hidden performance regressions in GPU-based workloads.
+It currently ships two production CLI flows:
+- `continuum doctor`: static system/runtime diagnostics before training
+- `continuum profile`: static + sustained benchmark profiling with analysis and remediation hints
 
 ## Design Principles
 
-- Structured diagnostics with explicit pass/warn/fail status
-- No silent system modifications
-- Reproducible structured reports
-- Infrastructure-grade transparency
+- Structured diagnostics with explicit `PASS`/`WARN`/`FAIL` states
+- No silent system modification
+- Reproducible JSON artifacts
+- Graceful degradation when optional dependencies are missing
+- Infrastructure-grade visibility for ML environments
 
-Hydra Doctor is **safe and side-effect free**. It reads environment/system info, prints a report, and optionally writes a JSON file.
-
-### Prerequisites
+## Prerequisites
 
 - Python **3.10+**
-- `pip` (recommended: latest)
-- For full GPU diagnostics on Linux/Windows: NVIDIA drivers (`nvidia-smi`), NVML (`pynvml`), PyTorch (`torch`)
+- `pip` (latest recommended)
+- For full GPU visibility: NVIDIA drivers (`nvidia-smi`) and/or PyTorch GPU backend
 
----
+## Install
 
-## Run
-
-From the repo root:
+From repo root:
 
 ```bash
 python3 -m venv .venv
@@ -34,7 +31,34 @@ source .venv/bin/activate            # macOS/Linux
 
 python -m pip install -U pip
 python -m pip install -e .
+```
 
+Optional profiling extras:
+
+```bash
+python -m pip install -e .[profile]
+```
+
+## CLI Overview
+
+```bash
+continuum doctor --help
+continuum profile --help
+```
+
+Also available as a direct script entrypoint:
+
+```bash
+continuum-profile --help
+```
+
+## `continuum doctor`
+
+Hydra Doctor is safe and side-effect free: it reads environment/system facts and reports health.
+
+Common usage:
+
+```bash
 continuum doctor
 continuum doctor --json
 continuum doctor --export /tmp/reports
@@ -45,35 +69,20 @@ continuum doctor --list-checks
 continuum doctor --deterministic
 ```
 
-## What Doctor Checks
+Doctor coverage:
+- Environment/runtime (Python, isolation, container/WSL hints)
+- Driver/GPU discovery (`nvidia-smi`, NVML, visibility)
+- CUDA toolkit/runtime compatibility hints
+- PyTorch install/runtime checks
+- GPU properties/health hints
+- NCCL soft checks
+- Linux `/dev/shm` system checks
 
-- Environment: Python version, virtualenv/conda isolation, runtime container/WSL detection
-- Driver/GPU: `nvidia-smi`, NVML init, NVML device enumeration, container GPU passthrough visibility
-- CUDA: driver version detection, `nvcc` toolkit detection, torch CUDA version, driver/CUDA compatibility matrix, runtime path hints
-- PyTorch: installation detection, `torch.cuda.is_available()`, torch CUDA/cuDNN metadata
-- GPU properties/health: compute capability and tensor-core readiness hint, persistence mode, active throttle reasons
-- NCCL (soft checks): environment variable sanity and torch NCCL backend availability (no distributed collectives executed)
-- System: Linux `/dev/shm` capacity checks
+Doctor output:
+- Human table in terminal
+- JSON artifact: `.hydra/reports/doctor_YYYYMMDD_HHMMSS.json`
 
-Linux-first behavior:
-- Linux: full check set runs (subject to environment and dependencies)
-- Windows: environment + driver/GPU/CUDA/PyTorch checks run; Linux-only checks are skipped
-- macOS: NVIDIA/CUDA/NCCL Linux/Windows checks are skipped safely; generic environment checks still run
-
-## Outputs
-
-- Human-readable Rich table is printed to console.
-- JSON report is written by default to:
-  - `.hydra/reports/doctor_YYYYMMDD_HHMMSS.json`
-- Use `--no-write` to disable file writing.
-- Use `--json` to also print JSON to stdout.
-- Use `--export <dir>` to change the output directory.
-- Use `--only <ids_or_categories>` to include a subset (comma-separated).
-- Use `--exclude <check_ids>` to skip specific checks (comma-separated).
-- Use `--list-checks` to print `check_id`, `category`, and `title` without executing checks.
-- Use `--deterministic` for stable CI snapshots (`timestamp_utc=1970-01-01T00:00:00Z`, all durations `0.0`).
-
-Top-level JSON shape:
+Doctor JSON top-level shape:
 
 ```json
 {
@@ -86,7 +95,7 @@ Top-level JSON shape:
 }
 ```
 
-## Exit Codes
+Doctor exit codes:
 
 | Exit code | Meaning |
 | --- | --- |
@@ -95,31 +104,121 @@ Top-level JSON shape:
 | `2` | Failed checks or check errors |
 | `4` | Tool-level crash/unhandled failure |
 
+## `continuum profile`
+
+Profiler produces a combined machine + sustained throughput profile.
+
+### Implemented profiler feature set
+
+- Feature #1: Static Profile
+  - CPU model/cores, RAM, storage/root fs hints, OS/kernel, Python/Torch runtime facts
+- Feature #2: Sustained CPU benchmark
+  - Timed warmup + measurement loop (iter/sec stats)
+- Feature #3: Sustained Memory Bandwidth benchmark
+  - Timed copy throughput with NumPy path + stdlib fallback
+- Feature #4: Sustained GPU compute benchmark
+  - CUDA/MPS timed matmul loop (iter/sec stats), dependency-safe
+- Feature #5: Bottleneck classification
+  - Deterministic heuristic analysis with confidence, reasons, recommendations
+- Feature #6: Remediation engine
+  - Priority + actionable suggestions derived from analysis
+- Feature #7: Realistic disk random I/O benchmark
+  - Timed random reads with MB/s + IOPS distribution stats
+
+### Profiler command examples
+
+```bash
+continuum profile
+continuum profile --static-only
+continuum profile --benchmarks static,cpu,memory,gpu,disk
+
+continuum profile --cpu-warmup 2 --cpu-duration 8
+continuum profile --mem-warmup 2 --mem-duration 8 --mem-mb 128
+continuum profile --gpu-warmup 2 --gpu-duration 8 --gpu-size 4096 --gpu-dtype float16
+continuum profile --disk-warmup 2 --disk-duration 8 --disk-size-mb 256
+
+continuum profile --no-gpu --no-disk
+continuum profile --output-format human
+continuum profile --output-format json
+continuum profile --output-format both
+continuum profile --quiet
+continuum profile --json
+continuum profile --export /tmp/reports
+continuum profile --no-write
+continuum profile --verbose
+```
+
+### Profiler output behavior
+
+- Terminal output:
+  - One combined table with proper headers covering static profile, all benchmarks, analysis, and remediation.
+  - Rows carry `PASS`/`WARN` status for readability.
+- JSON artifact:
+  - Default path: `.hydra/reports/profile_YYYYMMDD_HHMMSS.json`
+  - Stable `schema_version: "1.0.0"`
+  - Backward-compatible top-level shape:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "static_profile": {},
+  "benchmark_results": [],
+  "benchmarks": {
+    "cpu_sustained": {},
+    "memory_bandwidth": {},
+    "gpu_sustained": {},
+    "disk_random_io": {}
+  },
+  "analysis": {},
+  "remediation": {}
+}
+```
+
+Notes:
+- Optional dependencies (`torch`, `numpy`, `psutil`) never hard-crash profiling.
+- Missing backends/dependencies produce partial/null payloads and explanatory notes.
+
 ## Testing
 
-Offline-friendly unittest command:
+Run full suite:
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Fresh-user smoke install/run:
+Profiler-focused tests include:
+- `tests/test_profile_main.py` (CLI routing/selection/output behavior)
+- `tests/test_profile_static.py` (static profile probes and formatter fallback)
+- `tests/test_cpu_benchmark.py`
+- `tests/test_memory_bandwidth.py`
+- `tests/test_gpu_benchmark.py`
+- `tests/test_disk_benchmark.py`
+- `tests/test_analysis_bottleneck.py`
+- `tests/test_remediation.py`
 
-```bash
-./scripts/smoke_install_and_run.sh
-```
+Doctor-focused tests include:
+- `tests/test_runner.py`
+- `tests/test_doctor_v02_integration.py`
+- `tests/test_system_checks.py`
+- `tests/test_gpu_checks.py`
+- `tests/test_cuda_checks.py`
+- `tests/test_pytorch_checks.py`
+- `tests/test_nccl_checks.py`
 
-Manual copy/paste smoke flow:
+Smoke flow:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -e .
-continuum doctor --list-checks
+python -m pip install -e .[profile]
 continuum doctor --deterministic --json --no-write
-continuum doctor
-ls -1 .hydra/reports/doctor_*.json | tail -n 1
+continuum profile --static-only --json --no-write
+continuum profile --benchmarks static,cpu,memory,gpu,disk --output-format both
 ```
-![Status](https://img.shields.io/badge/status-hydra--doctor--development-orange)
+
+## Status
+
+![Status](https://img.shields.io/badge/status-doctor%2Bprofiler-active-green)
+![Profiler](https://img.shields.io/badge/profiler-features%201--7-implemented-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
