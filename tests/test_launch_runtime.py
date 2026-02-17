@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from importlib.util import find_spec
 from pathlib import Path
+from unittest.mock import patch
 
 if find_spec("typer") is not None:
     from typer.testing import CliRunner
@@ -18,6 +19,14 @@ else:
 
 @unittest.skipIf(find_spec("typer") is None, "typer is not installed in this interpreter")
 class TestLaunchRuntime(unittest.TestCase):
+    def test_launch_missing_script_returns_usage_error(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(app, ["launch", "missing_train.py"], catch_exceptions=False)
+        self.assertEqual(result.exit_code, 2)
+        err_text = getattr(result, "stderr", result.output)
+        self.assertIn("Training script not found: missing_train.py", err_text)
+        self.assertIn("Tip: use an absolute or correct relative path.", err_text)
+
     def test_launch_script_auto_resume(self) -> None:
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmp:
@@ -98,6 +107,79 @@ sys.exit(1)
                 payload = json.loads(result.stdout)
                 self.assertEqual(payload["script_args"], ["--output-dir", "./outputs/mmfine_100m"])
                 self.assertIn("./outputs/mmfine_100m", payload["command_argv"])
+            finally:
+                os.chdir(previous)
+
+    def test_launch_passthrough_args_exact_with_fixture(self) -> None:
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            previous = Path.cwd()
+            try:
+                os.chdir(tmp)
+                fixture = Path(__file__).parent / "fixtures" / "print_args.py"
+                result = runner.invoke(
+                    app,
+                    [
+                        "launch",
+                        str(fixture),
+                        "--json",
+                        "--",
+                        "--output-dir",
+                        "./outputs/mmfine_100m",
+                        "--tag",
+                        "alpha beta",
+                    ],
+                    catch_exceptions=False,
+                )
+                self.assertEqual(result.exit_code, 0)
+                payload = json.loads(result.stdout)
+                self.assertEqual(
+                    payload["script_args"],
+                    ["--output-dir", "./outputs/mmfine_100m", "--tag", "alpha beta"],
+                )
+                self.assertEqual(
+                    payload["command_argv"][-4:],
+                    ["--output-dir", "./outputs/mmfine_100m", "--tag", "alpha beta"],
+                )
+
+                stdout_line = payload["attempts"][0]["stdout_tail"][-1]
+                self.assertEqual(
+                    json.loads(stdout_line),
+                    ["--output-dir", "./outputs/mmfine_100m", "--tag", "alpha beta"],
+                )
+            finally:
+                os.chdir(previous)
+
+    def test_launch_accelerate_restores_on_keyboard_interrupt(self) -> None:
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            previous = Path.cwd()
+            try:
+                os.chdir(tmp)
+                script = Path("train.py")
+                script.write_text("print('ok')\n", encoding="utf-8")
+
+                with patch(
+                    "continuum.accelerate.cli.execute_acceleration_action",
+                    side_effect=[
+                        {"active_status": "Partial", "effective_active": False},
+                        {"active_status": "False", "effective_active": False},
+                    ],
+                ) as accelerate_mock:
+                    with patch(
+                        "continuum.accelerate.cli.launch_training_script",
+                        side_effect=KeyboardInterrupt,
+                    ):
+                        result = runner.invoke(
+                            app,
+                            ["launch", "train.py", "--accelerate"],
+                            catch_exceptions=False,
+                        )
+
+                self.assertEqual(result.exit_code, 130)
+                self.assertEqual(accelerate_mock.call_count, 2)
+                self.assertEqual(accelerate_mock.call_args_list[0].kwargs["action"], "on")
+                self.assertEqual(accelerate_mock.call_args_list[1].kwargs["action"], "off")
             finally:
                 os.chdir(previous)
 

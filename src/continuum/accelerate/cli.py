@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Literal
 
@@ -12,7 +13,9 @@ from continuum.accelerate.launcher import launch_training_script
 from continuum.accelerate.models import AccelerationActionResult, ExecutionContext, parse_csv_set
 from continuum.accelerate.plan_builder import build_plan
 from continuum.accelerate.plugins.loader import PluginLoadResult, run_shell_hooks
-from continuum.accelerate.reporting import build_report, render_summary, write_state_report
+from continuum.accelerate.reporting import build_report, render_summary, write_json, write_state_report
+from continuum.accelerate.system_cli import execute_acceleration_action
+from continuum.accelerate.system_state import state_path as accelerate_state_path
 from continuum.accelerate.ui.interactive import select_actions_interactively
 
 Profile = Literal["minimal", "balanced", "max", "expert"]
@@ -115,6 +118,46 @@ def _write_report_if_enabled(report: dict, out: Path | None, no_state_write: boo
 
 def _print_json_stdout(report: dict) -> None:
     print(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False))
+
+
+def _map_launch_accelerate_status(payload: dict | None, requested: bool) -> str:
+    if not requested:
+        return "Off"
+    if not payload:
+        return "Off"
+    status = str(payload.get("active_status", "")).lower()
+    if status == "true":
+        return "Full"
+    if status == "partial":
+        return "Partial"
+    effective = bool(payload.get("effective_active"))
+    return "Full" if effective else "Off"
+
+
+def _copy_accelerate_state_snapshot(destination: Path) -> None:
+    source = accelerate_state_path(Path.cwd())
+    if source.exists():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+
+def _attach_launch_accelerate_metadata(
+    *,
+    report: dict,
+    accelerate_used: bool,
+    accelerate_status: str,
+    run_dir: Path,
+    launch_out: Path | None,
+    no_state_write: bool,
+) -> None:
+    report["accelerate_used"] = accelerate_used
+    report["accelerate_status"] = accelerate_status
+    report["accelerate_state_path"] = str(accelerate_state_path(Path.cwd()))
+    write_json(run_dir / "report.json", report)
+    if not no_state_write:
+        write_json(Path.cwd() / ".hydra" / "state" / "launch_latest.json", report)
+    if launch_out is not None:
+        write_json(launch_out, report)
 
 
 def _run_plan_mode(
@@ -336,6 +379,10 @@ def launch_command(
     no_timestamp: bool = typer.Option(False, "--no-timestamp", help="Disable timestamps for deterministic planner JSON outputs."),
     max_restarts: int = typer.Option(1, "--max-restarts", min=0, help="Maximum auto-resume restarts in script mode."),
     auto_resume: bool = typer.Option(True, "--auto-resume/--no-auto-resume", help="Attempt automatic resume from latest checkpoint in script mode."),
+    accelerate: bool = typer.Option(False, "--accelerate", help="Enable temporary system acceleration during script execution."),
+    accelerate_dry_run: bool = typer.Option(False, "--accelerate-dry-run", help="Preview acceleration changes without applying them."),
+    accelerate_verbose: bool = typer.Option(False, "--accelerate-verbose", help="Print acceleration payloads to stderr."),
+    require_accelerate: bool = typer.Option(False, "--require-accelerate", help="Fail launch if acceleration ON fails unexpectedly."),
     debug: bool = typer.Option(False, "--debug", help="Print debug argv tracing for script mode."),
 ) -> None:
     console = Console(stderr=True)
@@ -344,25 +391,84 @@ def launch_command(
     try:
         if script is not None:
             if not script.exists() or not script.is_file():
-                raise UsageError(f"Training script not found: {script}")
+                raise UsageError(f"Training script not found: {script}. Tip: use an absolute or correct relative path.")
             script_args = list(ctx.args)
             if dry_run and apply:
                 raise UsageError("Cannot pass both --dry-run and --apply")
             runtime_dry_run = dry_run
-            exit_code, _report = launch_training_script(
-                script=script,
-                script_args=script_args,
-                cwd=Path.cwd(),
-                max_restarts=max_restarts,
-                auto_resume=auto_resume,
-                quiet=quiet_human,
-                verbose=verbose,
-                json_output=json_output,
-                out=out,
-                no_state_write=no_state_write,
-                dry_run=runtime_dry_run,
-                debug=debug,
-            )
+
+            accelerate_on_payload: dict | None = None
+            accelerate_status = "Off"
+            launch_report: dict | None = None
+
+            if accelerate:
+                try:
+                    accelerate_on_payload = execute_acceleration_action(
+                        action="on",
+                        dry_run=accelerate_dry_run,
+                        cpu_only=False,
+                        gpu_only=False,
+                    )
+                    accelerate_status = _map_launch_accelerate_status(accelerate_on_payload, requested=True)
+                    if accelerate_verbose:
+                        _eprint(json.dumps(accelerate_on_payload, indent=2, sort_keys=True, ensure_ascii=False))
+                except Exception as exc:  # noqa: BLE001
+                    accelerate_status = "Off"
+                    _eprint(f"Warning: accelerate --on failed: {type(exc).__name__}: {exc}")
+                    if require_accelerate:
+                        raise
+
+            try:
+                exit_code, launch_report = launch_training_script(
+                    script=script,
+                    script_args=script_args,
+                    cwd=Path.cwd(),
+                    max_restarts=max_restarts,
+                    auto_resume=auto_resume,
+                    quiet=quiet_human,
+                    verbose=verbose,
+                    json_output=False,
+                    out=out,
+                    no_state_write=no_state_write,
+                    dry_run=runtime_dry_run,
+                    debug=debug,
+                )
+            finally:
+                accelerate_off_payload: dict | None = None
+                if accelerate:
+                    try:
+                        accelerate_off_payload = execute_acceleration_action(
+                            action="off",
+                            dry_run=False,
+                            cpu_only=False,
+                            gpu_only=False,
+                        )
+                        if accelerate_verbose:
+                            _eprint(json.dumps(accelerate_off_payload, indent=2, sort_keys=True, ensure_ascii=False))
+                    except Exception as exc:  # noqa: BLE001
+                        _eprint(f"Warning: accelerate --off failed: {type(exc).__name__}: {exc}")
+
+                if launch_report is not None:
+                    run_dir = Path(launch_report["log_path"]).parent
+                    if accelerate_on_payload is not None:
+                        write_json(run_dir / "accelerate_before.json", accelerate_on_payload)
+                    else:
+                        _copy_accelerate_state_snapshot(run_dir / "accelerate_before.json")
+                    if accelerate_off_payload is not None:
+                        write_json(run_dir / "accelerate_after.json", accelerate_off_payload)
+                    else:
+                        _copy_accelerate_state_snapshot(run_dir / "accelerate_after.json")
+
+                    _attach_launch_accelerate_metadata(
+                        report=launch_report,
+                        accelerate_used=accelerate,
+                        accelerate_status=accelerate_status,
+                        run_dir=run_dir,
+                        launch_out=out,
+                        no_state_write=no_state_write,
+                    )
+                    if json_output:
+                        _print_json_stdout(launch_report)
             raise typer.Exit(code=exit_code)
 
         exit_code = _run_plan_mode(
@@ -385,7 +491,7 @@ def launch_command(
         _eprint("Interrupted")
         raise typer.Exit(code=130)
     except UsageError as exc:
-        _eprint(f"Usage error: {exc}")
+        _eprint(str(exc))
         raise typer.Exit(code=2)
     except typer.Exit:
         raise
