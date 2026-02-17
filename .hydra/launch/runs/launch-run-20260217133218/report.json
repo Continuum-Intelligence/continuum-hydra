@@ -1,0 +1,21 @@
+{
+  "attempts": [],
+  "error": "Interrupted by user",
+  "latest_checkpoint": null,
+  "log_path": "/home/rishi/continuum-hydra/.hydra/launch/runs/launch-run-20260217133218/launch.log",
+  "max_restarts": 1,
+  "mode": "apply",
+  "restarts_used": 0,
+  "run_id": "launch-run-20260217133218",
+  "schema_version": "launch.runtime.v1",
+  "script": "test_training/train_100m_mmfine_reason.py",
+  "script_args": [
+    "--max-samples",
+    "500",
+    "--num-train-epochs",
+    "1",
+    "--output-dir",
+    "./outputs/"
+  ],
+  "status": "interrupted"
+}

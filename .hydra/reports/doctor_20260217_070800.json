@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "environment": {
+    "timestamp_utc": "2026-02-17T07:08:00.790966+00:00",
+    "os": "Linux 6.6.87.2-microsoft-standard-WSL2",
+    "python_version": "3.12.3",
+    "python_executable": "/home/rishi/continuum-hydra/.venv/bin/python3",
+    "is_container": false,
+    "is_wsl": true,
+    "hydra_version": "0.1.0",
+    "hostname": "MSI"
+  },
+  "checks": [
+    {
+      "id": "environment.python_version",
+      "title": "Python Version",
+      "category": "environment",
+      "status": "PASS",
+      "message": "Python version is supported.",
+      "details": {
+        "current": "3.12.3",
+        "minimum": "3.10"
+      },
+      "remediation": null,
+      "severity": 0,
+      "duration_ms": 0.01563099976920057
+    },
+    {
+      "id": "environment.venv",
+      "title": "Virtual Environment",
+      "category": "environment",
+      "status": "PASS",
+      "message": "Python environment is isolated (venv/conda).",
+      "details": {
+        "in_venv": true,
+        "sys_prefix": "/home/rishi/continuum-hydra/.venv",
+        "sys_base_prefix": "/usr",
+        "conda_prefix": null
+      },
+      "remediation": null,
+      "severity": 0,
+      "duration_ms": 0.015020001228549518
+    },
+    {
+      "id": "environment.runtime",
+      "title": "Runtime Environment",
+      "category": "environment",
+      "status": "PASS",
+      "message": "Runtime environment detected.",
+      "details": {
+        "is_container": false,
+        "is_wsl": true
+      },
+      "remediation": null,
+      "severity": 0,
+      "duration_ms": 0.11547000030986965
+    }
+  ],
+  "summary": {
+    "PASS": 3,
+    "WARN": 0,
+    "FAIL": 0,
+    "SKIP": 0,
+    "ERROR": 0
+  },
+  "overall_status": "healthy",
+  "total_duration_ms": 0.14612100130761974
+}

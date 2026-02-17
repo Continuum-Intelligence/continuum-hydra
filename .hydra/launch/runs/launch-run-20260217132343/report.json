@@ -1,0 +1,70 @@
+{
+  "attempts": [
+    {
+      "checkpoint_seen": "/home/rishi/continuum-hydra/.venv/lib/python3.12/site-packages/__editable__.continuum_intelligence-0.1.0.pth",
+      "command": [
+        "/home/rishi/continuum-hydra/.venv/bin/python3",
+        "test_training/train_100m_mmfine_reason.py",
+        "--max-samples",
+        "500",
+        "--num-train-epochs",
+        "1",
+        "--output-dir",
+        "./outputs/"
+      ],
+      "duration_seconds": 0.087,
+      "ended_at": "2026-02-17T13:23:43.533795+00:00",
+      "return_code": 1,
+      "started_at": "2026-02-17T13:23:43.446989+00:00",
+      "stdout_tail": [
+        "Traceback (most recent call last):",
+        "  File \"/home/rishi/continuum-hydra/test_training/train_100m_mmfine_reason.py\", line 7, in <module>",
+        "    from datasets import Dataset, load_dataset",
+        "ModuleNotFoundError: No module named 'datasets'"
+      ]
+    },
+    {
+      "checkpoint_seen": "/home/rishi/continuum-hydra/.venv/lib/python3.12/site-packages/__editable__.continuum_intelligence-0.1.0.pth",
+      "command": [
+        "/home/rishi/continuum-hydra/.venv/bin/python3",
+        "test_training/train_100m_mmfine_reason.py",
+        "--max-samples",
+        "500",
+        "--num-train-epochs",
+        "1",
+        "--output-dir",
+        "./outputs/",
+        "--resume",
+        "/home/rishi/continuum-hydra/.venv/lib/python3.12/site-packages/__editable__.continuum_intelligence-0.1.0.pth"
+      ],
+      "duration_seconds": 0.081,
+      "ended_at": "2026-02-17T13:23:43.719021+00:00",
+      "return_code": 1,
+      "started_at": "2026-02-17T13:23:43.638154+00:00",
+      "stdout_tail": [
+        "Traceback (most recent call last):",
+        "  File \"/home/rishi/continuum-hydra/test_training/train_100m_mmfine_reason.py\", line 7, in <module>",
+        "    from datasets import Dataset, load_dataset",
+        "ModuleNotFoundError: No module named 'datasets'"
+      ]
+    }
+  ],
+  "error": "training process exited with code 1",
+  "latest_checkpoint": "/home/rishi/continuum-hydra/.venv/lib/python3.12/site-packages/__editable__.continuum_intelligence-0.1.0.pth",
+  "log_path": "/home/rishi/continuum-hydra/.hydra/launch/runs/launch-run-20260217132343/launch.log",
+  "max_restarts": 1,
+  "mode": "apply",
+  "restarts_used": 1,
+  "run_id": "launch-run-20260217132343",
+  "schema_version": "launch.runtime.v1",
+  "script": "test_training/train_100m_mmfine_reason.py",
+  "script_args": [
+    "--max-samples",
+    "500",
+    "--num-train-epochs",
+    "1",
+    "--output-dir",
+    "./outputs/"
+  ],
+  "status": "failed"
+}

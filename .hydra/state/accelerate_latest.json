@@ -1,0 +1,265 @@
+{
+  "context": {
+    "cwd": "/home/rishi/continuum-hydra",
+    "doctor_facts": {
+      "checks": [
+        {
+          "category": "environment",
+          "details": {
+            "current": "3.12.3",
+            "minimum": "3.10"
+          },
+          "duration_ms": 0.01563099976920057,
+          "id": "environment.python_version",
+          "message": "Python version is supported.",
+          "remediation": null,
+          "severity": 0,
+          "status": "PASS",
+          "title": "Python Version"
+        },
+        {
+          "category": "environment",
+          "details": {
+            "conda_prefix": null,
+            "in_venv": true,
+            "sys_base_prefix": "/usr",
+            "sys_prefix": "/home/rishi/continuum-hydra/.venv"
+          },
+          "duration_ms": 0.015020001228549518,
+          "id": "environment.venv",
+          "message": "Python environment is isolated (venv/conda).",
+          "remediation": null,
+          "severity": 0,
+          "status": "PASS",
+          "title": "Virtual Environment"
+        },
+        {
+          "category": "environment",
+          "details": {
+            "is_container": false,
+            "is_wsl": true
+          },
+          "duration_ms": 0.11547000030986965,
+          "id": "environment.runtime",
+          "message": "Runtime environment detected.",
+          "remediation": null,
+          "severity": 0,
+          "status": "PASS",
+          "title": "Runtime Environment"
+        }
+      ],
+      "environment": {
+        "hostname": "MSI",
+        "hydra_version": "0.1.0",
+        "is_container": false,
+        "is_wsl": true,
+        "os": "Linux 6.6.87.2-microsoft-standard-WSL2",
+        "python_executable": "/home/rishi/continuum-hydra/.venv/bin/python3",
+        "python_version": "3.12.3",
+        "timestamp_utc": "2026-02-17T07:08:00.790966+00:00"
+      },
+      "overall_status": "healthy",
+      "schema_version": "1.0.0",
+      "summary": {
+        "ERROR": 0,
+        "FAIL": 0,
+        "PASS": 3,
+        "SKIP": 0,
+        "WARN": 0
+      },
+      "total_duration_ms": 0.14612100130761974
+    },
+    "env": {
+      "ACCELERATE_PROFILE": "balanced",
+      "CODEX_CI": "1",
+      "CODEX_MANAGED_BY_NPM": "1",
+      "CODEX_SANDBOX_NETWORK_DISABLED": "1",
+      "CODEX_THREAD_ID": "019c6156-7d90-7202-9872-20507ac5317c",
+      "COLORTERM": "",
+      "DISPLAY": ":0",
+      "GH_PAGER": "cat",
+      "GIT_PAGER": "cat",
+      "HOME": "/home/rishi",
+      "HOSTTYPE": "x86_64",
+      "LANG": "C.UTF-8",
+      "LC_ALL": "C.UTF-8",
+      "LC_CTYPE": "C.UTF-8",
+      "LOGNAME": "rishi",
+      "NAME": "MSI",
+      "NO_COLOR": "1",
+      "NVM_BIN": "/home/rishi/.nvm/versions/node/v22.22.0/bin",
+      "NVM_CD_FLAGS": "-q",
+      "NVM_DIR": "/home/rishi/.nvm",
+      "NVM_INC": "/home/rishi/.nvm/versions/node/v22.22.0/include/node",
+      "OLDPWD": "/home/rishi",
+      "PAGER": "cat",
+      "PATH": "/home/rishi/continuum-hydra/.venv/bin:/home/rishi/.codex/tmp/arg0/codex-arg01lyzPP:/home/rishi/.npm-global/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/path:/home/rishi/.npm-global/bin:/home/rishi/.nvm/versions/node/v22.22.0/bin:/home/rishi/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/WindowsApps/MicrosoftCorporationII.WindowsSubsystemForLinux_2.6.3.0_x64__8wekyb3d8bbwe:/mnt/c/Users/rishi/AppData/Local/Programs/cursor/resources/app/bin:/mnt/c/Program Files/Google/Chrome/Application:/mnt/c/Program Files (x86)/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Program Files/dotnet/:/mnt/c/Program Files/Microsoft SQL Server/150/Tools/Binn/:/mnt/c/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/:/mnt/c/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/:/mnt/c/Users/rishi/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/rishi/.dotnet/tools:/mnt/c/Users/rishi/AppData/Local/Programs/cursor/resources/app/bin:/mnt/c/Program Files/Git/cmd:/mnt/c/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files/Cloudflare/Cloudflare WARP/:/Docker/host/bin:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python312/Scripts/:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python312/:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python310/Scripts/:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python310/:/mnt/c/Users/rishi/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/rishi/.dotnet/tools:/mnt/c/Users/rishi/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python313:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python313/Scripts:/mnt/c/Users/rishi/AppData/Local/Programs/Python/Python313/:/mnt/c/Users/rishi/AppData/Local/Python/bin:/mnt/c/Users/rishi/AppData/Local/Programs/Antigravity/bin:/mnt/c/Users/rishi/AppData/Roaming/npm:/snap/bin:/snap/bin",
+      "PS1": "(.venv) ",
+      "PULSE_SERVER": "unix:/mnt/wslg/PulseServer",
+      "PWD": "/home/rishi/continuum-hydra",
+      "SHELL": "/usr/bin/zsh",
+      "SHLVL": "2",
+      "TERM": "xterm-256color",
+      "USER": "rishi",
+      "VIRTUAL_ENV": "/home/rishi/continuum-hydra/.venv",
+      "VIRTUAL_ENV_PROMPT": "(.venv) ",
+      "WAYLAND_DISPLAY": "wayland-0",
+      "WSL2_GUI_APPS_ENABLED": "1",
+      "WSLENV": "",
+      "WSL_DISTRO_NAME": "Ubuntu",
+      "WSL_INTEROP": "/run/WSL/11380_interop",
+      "XDG_RUNTIME_DIR": "/mnt/wslg/runtime-dir",
+      "ZDOTDIR": "/home/rishi",
+      "_": "/home/rishi/continuum-hydra/.venv/bin/continuum"
+    },
+    "has_nvidia_smi": true,
+    "is_linux": true,
+    "is_macos": false,
+    "is_windows": false,
+    "os_name": "linux",
+    "repo_root": "/home/rishi/continuum-hydra",
+    "user_is_root": false
+  },
+  "mode": "apply",
+  "plan": {
+    "created_at": "2026-02-17T07:31:52.964701+00:00",
+    "plan_id": "accel-20260217073152",
+    "profile": "balanced",
+    "recommendations": [
+      {
+        "action_id": "cpu.governor",
+        "category": "cpu",
+        "commands": [],
+        "recommended": false,
+        "requires_root": true,
+        "risk": "medium",
+        "supported": false,
+        "title": "CPU Governor",
+        "why": "Keep CPU frequency policy aligned for consistent training throughput."
+      },
+      {
+        "action_id": "gpu.nvidia_persistence",
+        "category": "gpu",
+        "commands": [
+          "nvidia-smi -pm 1"
+        ],
+        "recommended": true,
+        "requires_root": true,
+        "risk": "medium",
+        "supported": true,
+        "title": "NVIDIA Persistence Mode",
+        "why": "Persistence mode reduces startup latency and stabilizes GPU initialization."
+      },
+      {
+        "action_id": "process.priority",
+        "category": "process",
+        "commands": [
+          "nice -n -5 <your_command>",
+          "ionice -c2 -n0 <your_command>"
+        ],
+        "recommended": true,
+        "requires_root": false,
+        "risk": "low",
+        "supported": true,
+        "title": "Process Priority Suggestions",
+        "why": "Process niceness and IO priority can reduce scheduling jitter during training runs."
+      }
+    ],
+    "schema_version": "accelerate.v1",
+    "warnings": []
+  },
+  "plugin_summary": {
+    "actions_loaded": 0,
+    "failures": [],
+    "loaded_files": [],
+    "post_apply_py_count": 0,
+    "post_apply_shell": [],
+    "pre_apply_py_count": 0,
+    "pre_apply_shell": []
+  },
+  "results": [
+    {
+      "action_id": "cpu.governor",
+      "after": {},
+      "applied": false,
+      "before": {
+        "cpupower_path": null,
+        "current_governor": null
+      },
+      "commands": [],
+      "errors": [],
+      "requires_root": true,
+      "returncodes": {},
+      "risk": "medium",
+      "skipped_reason": "Not selected",
+      "stderr_tail": [],
+      "stdout_tail": [],
+      "supported": false,
+      "title": "CPU Governor"
+    },
+    {
+      "action_id": "gpu.nvidia_persistence",
+      "after": {
+        "persistence_mode": null,
+        "raw_excerpt": "\n==============NVSMI LOG==============\n\nTimestamp                                              : Tue Feb 17 07:31:53 2026\nDriver Version                                         : 591.74\nCUDA Version                                           : 13.1\n\nAttached GPUs                                          : 1\nGPU 00000000:01:00.0\n    Performance State                                  : P8\n    Clocks Event Reasons\n        Idle                                           : Active\n        Applications Clocks Setting                    : Not Active\n        SW Power Cap                                  "
+      },
+      "applied": false,
+      "before": {
+        "persistence_mode": null,
+        "raw_excerpt": "\n==============NVSMI LOG==============\n\nTimestamp                                              : Tue Feb 17 07:31:53 2026\nDriver Version                                         : 591.74\nCUDA Version                                           : 13.1\n\nAttached GPUs                                          : 1\nGPU 00000000:01:00.0\n    Performance State                                  : P8\n    Clocks Event Reasons\n        Idle                                           : Active\n        Applications Clocks Setting                    : Not Active\n        SW Power Cap                                  "
+      },
+      "commands": [
+        "nvidia-smi -pm 1"
+      ],
+      "errors": [],
+      "requires_root": true,
+      "returncodes": {},
+      "risk": "medium",
+      "skipped_reason": "Root privileges required",
+      "stderr_tail": [],
+      "stdout_tail": [],
+      "supported": true,
+      "title": "NVIDIA Persistence Mode"
+    },
+    {
+      "action_id": "process.priority",
+      "after": {
+        "notes": [],
+        "suggestions": [
+          "nice -n -5 <your_command>",
+          "ionice -c2 -n0 <your_command>"
+        ]
+      },
+      "applied": false,
+      "before": {
+        "ionice_available": true,
+        "os_name": "linux"
+      },
+      "commands": [
+        "nice -n -5 <your_command>",
+        "ionice -c2 -n0 <your_command>"
+      ],
+      "errors": [],
+      "requires_root": false,
+      "returncodes": {},
+      "risk": "low",
+      "skipped_reason": "No-op action. Use suggested command wrappers for training runs.",
+      "stderr_tail": [],
+      "stdout_tail": [],
+      "supported": true,
+      "title": "Process Priority Suggestions"
+    }
+  ],
+  "schema_version": "accelerate.v1",
+  "selected_action_ids": [
+    "gpu.nvidia_persistence",
+    "process.priority"
+  ],
+  "summary": {
+    "applied": 0,
+    "skipped": 3,
+    "total": 3,
+    "unsupported": 1
+  },
+  "warnings": []
+}
