@@ -2,9 +2,11 @@
 
 Hydra is a performance-first ML systems toolkit under the Continuum infrastructure initiative.
 
-It ships three production CLI flows:
+It ships five production CLI flows:
 - `continuum doctor`: static system/runtime diagnostics before training
 - `continuum profile`: static + sustained benchmark profiling with bottleneck analysis and remediation
+- `continuum accelerate`: system tuning / optimization planning and optional apply
+- `continuum launch`: training script runtime with checkpoint-aware auto-restart / auto-resume
 - `continuum setup`: environment bootstrap for NumPy/PyTorch with reproducibility state artifacts
 
 ## Design Principles
@@ -44,6 +46,8 @@ python -m pip install -e .[profile]
 
 ```bash
 continuum --help
+continuum accelerate --help
+continuum launch --help
 continuum doctor --help
 continuum profile --help
 continuum setup --help
@@ -91,6 +95,25 @@ continuum-profile --help
 - Bottleneck classifier (`primary_bottleneck`, `secondary_bottleneck`, confidence, reasons, recommendations)
 - Remediation action generator (`priority`, `actions`)
 - Unified human + JSON formatting layer
+
+### `continuum accelerate` modules (all implemented)
+
+- Acceleration plan builder (environment-aware recommendations)
+- Built-in tuning action: CPU governor tuning (Linux)
+- Built-in tuning action: NVIDIA persistence mode tuning (Linux)
+- Built-in tuning action: process priority / `nice` / `ionice` suggestions
+- Plugin loading from `.hydra/launch.d` (`.py` + shell hooks)
+- Interactive action selection UI
+- Plan/apply reporting with JSON state artifacts
+
+### `continuum launch` runtime features (all implemented)
+
+- Python training script execution with pass-through script args
+- Runtime log capture (`.hydra/launch/runs/.../launch.log`)
+- Runtime report JSON (`report.json` + `.hydra/state/launch_latest.json`)
+- Checkpoint discovery in `checkpoints/`, `outputs/`, `runs/`
+- Auto-restart with checkpoint-based `--resume` injection
+- Dry-run mode for command/report preview
 
 ### `continuum setup` capabilities (all implemented)
 
@@ -226,6 +249,68 @@ Profile exit codes:
 | `2` | Invalid CLI value (for example unknown benchmark or output format) |
 | `4` | Tool-level crash/unhandled failure |
 
+## `continuum accelerate`
+
+Accelerate focuses on system tuning and optimization recommendations before launching training.
+
+Common usage:
+
+```bash
+continuum accelerate
+continuum accelerate --dry-run
+continuum accelerate --apply
+continuum accelerate --interactive
+continuum accelerate --profile balanced
+continuum accelerate --only gpu,cpu
+continuum accelerate --exclude process
+continuum accelerate --json
+continuum accelerate --out /tmp/accelerate.json
+continuum accelerate --no-state-write
+continuum accelerate --no-timestamp
+continuum accelerate --verbose
+```
+
+Accelerate output:
+- Human-readable plan/apply summary
+- JSON report (stdout with `--json`, and/or `.hydra/state/launch_latest.json`)
+
+Accelerate exit codes:
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Successful plan/apply run |
+| `2` | Usage error / invalid option value |
+| `1` | Runtime failure |
+
+## `continuum launch`
+
+Launch runs a training script and manages checkpoint-aware restart/resume behavior.
+
+Common usage:
+
+```bash
+continuum launch train.py
+continuum launch train.py --max-restarts 3
+continuum launch train.py --no-auto-resume
+continuum launch train.py --dry-run --json
+continuum launch train.py --out /tmp/launch_report.json
+continuum launch train.py -- --output-dir ./outputs/run1
+```
+
+Launch runtime artifacts:
+- `.hydra/launch/runs/<run_id>/launch.log`
+- `.hydra/launch/runs/<run_id>/report.json`
+- `.hydra/state/launch_latest.json` (unless `--no-state-write`)
+
+Launch exit codes:
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Training completed successfully (or dry-run success) |
+| `1` | Training/runtime failure |
+| `2` | Usage error (for example missing script path) |
+| `130` | Interrupted by user |
+
 ## `continuum setup`
 
 Setup installs baseline ML dependencies into the active Python environment and records reproducibility metadata.
@@ -295,6 +380,8 @@ source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -e .[profile]
 continuum doctor --deterministic --json --no-write
+continuum accelerate --dry-run --json
+continuum launch test_training/train_100m_mmfine_reason.py --dry-run --json
 continuum profile --static-only --json --no-write
 continuum profile --benchmarks static,cpu,memory,gpu,disk --output-format both
 continuum setup --dry-run
@@ -302,7 +389,9 @@ continuum setup --dry-run
 
 ## Status
 
-![Status](https://img.shields.io/badge/status-doctor%2Bprofiler%2Bsetup-active-green)
+![Status](https://img.shields.io/badge/status-doctor%2Bprofile%2Baccelerate%2Blaunch%2Bsetup-active-green)
 ![Doctor](https://img.shields.io/badge/doctor-checks%2021-implemented-blue)
 ![Profiler](https://img.shields.io/badge/profiler-modules%208-implemented-blue)
+![Accelerate](https://img.shields.io/badge/accelerate-tuning%20planner-implemented-blue)
+![Launch](https://img.shields.io/badge/launch-runtime%20resume-implemented-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)

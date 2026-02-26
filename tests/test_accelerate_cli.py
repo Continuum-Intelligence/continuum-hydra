@@ -24,7 +24,7 @@ class TestAccelerateCli(unittest.TestCase):
             previous = Path.cwd()
             try:
                 os.chdir(tmp)
-                result = runner.invoke(app, ["launch", "--dry-run", "--json"], catch_exceptions=False)
+                result = runner.invoke(app, ["accelerate", "--dry-run", "--json"], catch_exceptions=False)
                 self.assertEqual(result.exit_code, 0)
                 payload = json.loads(result.stdout)
                 self.assertEqual(payload["mode"], "dry-run")
@@ -35,7 +35,7 @@ class TestAccelerateCli(unittest.TestCase):
 
     def test_invalid_profile_returns_2(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(app, ["launch", "--profile", "ultra"], catch_exceptions=False)
+        result = runner.invoke(app, ["accelerate", "--profile", "ultra"], catch_exceptions=False)
         self.assertEqual(result.exit_code, 2)
 
     def test_unknown_only_category_returns_2(self) -> None:
@@ -44,7 +44,7 @@ class TestAccelerateCli(unittest.TestCase):
             previous = Path.cwd()
             try:
                 os.chdir(tmp)
-                result = runner.invoke(app, ["launch", "--dry-run", "--only", "unknown"], catch_exceptions=False)
+                result = runner.invoke(app, ["accelerate", "--dry-run", "--only", "unknown"], catch_exceptions=False)
                 self.assertEqual(result.exit_code, 2)
             finally:
                 os.chdir(previous)
@@ -57,7 +57,7 @@ class TestAccelerateCli(unittest.TestCase):
                 os.chdir(tmp)
                 result = runner.invoke(
                     app,
-                    ["launch", "--dry-run", "--json", "--no-timestamp"],
+                    ["accelerate", "--dry-run", "--json", "--no-timestamp"],
                     catch_exceptions=False,
                 )
                 self.assertEqual(result.exit_code, 0)

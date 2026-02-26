@@ -1,3 +1,4 @@
-from continuum.accelerate.plugins.loader import HookBundle, PluginLoadResult, load_plugins, run_shell_hooks
+from __future__ import annotations
 
-__all__ = ["HookBundle", "PluginLoadResult", "load_plugins", "run_shell_hooks"]
+# Compatibility shim: launch implementation moved to continuum.launch.
+from continuum.launch.plugins import *  # noqa: F401,F403
