@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-linux&windows%20%7C%20macOS-lightgrey)
 ![Continuum Hydra demo](continuum-hydra-default.gif)
 
 **Hydra is a performance-first ML systems toolkit** that gives engineers infrastructure-grade visibility into their training environment. It ships five CLI flows: diagnose your system, benchmark and profile it, apply kernel-level optimizations, launch training with automatic checkpoint-aware restart, and bootstrap reproducible environments.
