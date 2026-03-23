@@ -1,5 +1,7 @@
 # continuum-hydra
 
+![Continuum Hydra CLI demo](continuum-hydra-default.gif)
+
 Hydra is a performance-first ML systems toolkit under the Continuum infrastructure initiative.
 
 It ships five production CLI flows:
@@ -8,10 +10,6 @@ It ships five production CLI flows:
 - `continuum accelerate`: system tuning / optimization planning and optional apply
 - `continuum launch`: training script runtime with checkpoint-aware auto-restart / auto-resume
 - `continuum setup`: environment bootstrap for NumPy/PyTorch with reproducibility state artifacts
-
-## CLI Demo
-
-![Continuum Hydra CLI demo](continuum-hydra-default.gif)
 
 ## Design Principles
 
